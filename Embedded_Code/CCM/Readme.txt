@@ -1,4 +1,5 @@
 Name: Central Control Module
-Engineers: Joshua Miller and Ian Flores
+Development Engineers: Joshua Miller and Lucas Juttner
+Test Engineers: Ian Flores
 
 Description:

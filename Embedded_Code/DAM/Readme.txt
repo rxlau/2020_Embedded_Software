@@ -1,4 +1,3 @@
 Name: Data Acquisition Module
-Engineer: Michael Barbosa
 
-Description:
+PROJECT POSTPONED TO A LATER TIME
