@@ -75,6 +75,7 @@
 //Parameters
 //====================================
 #define BRAKE_APPLIED_CUTOFF 400
+#define PWM_PERIOD 100
 //====================================
 
 //Pin enumerations
@@ -107,7 +108,9 @@ void startup();
 
 //Global Variables ;-;
 //====================================
-
+hetSIGNAL_t ThrottleL, ThrottleR;
+hetSIGNAL_t RegenL, RegenR;
+hetSIGNAL_t BatteryFans;
 //====================================
 
 
@@ -140,8 +143,24 @@ int main(void)
     adcCalibration(adcREG1);
     adcCalibration(adcREG2);
 
+    //Setup PWM outputs
+    ThrottleL.duty = 0;             //NEED TO TEST IF I CAN MODIFY THESE WITHOUT RECALLING SETSIGNAL
+    ThrottleL.period = PWM_PERIOD;
+
+    ThrottleR.duty = 0;
+    ThrottleR.period = PWM_PERIOD;
+
+    RegenL.duty = 0;
+    RegenL.period = PWM_PERIOD;
+
+    RegenR.duty = 0;
+    RegenR.period = PWM_PERIOD;
+
+    BatteryFans.duty = 0;
+    BatteryFans.period = PWM_PERIOD;
+
     //Start RTI Counter
-    rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
+    //rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
 
     //Loop Forever
     while(1);
@@ -158,13 +177,19 @@ int main(void)
 void gioNotification(gioPORT_t *port, uint32 bit)
 {
     if(bit==BMSFault || bit==IMDFault || bit==BSPDFault)  //Fault causing inputs
-        fault(1);
-    else if(bit==StartButton) //Start Button signal
+        fault(bit);
+
+    if(bit==StartButton) //Start Button signal
     {
         //Check Brake
         if(brakeCheck() == 1)
         {
-            //Startup Sequence
+            //Disable Start button
+            gioDisableNotification(gioPORTA, StartButton);
+            //Run Start Sequence
+            startup();
+            //Start RTI Counter
+            rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
 
         }
         else
@@ -174,19 +199,49 @@ void gioNotification(gioPORT_t *port, uint32 bit)
 
 void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 {
+    if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
+    {
 
+    }
+    if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
+    {
+
+    }
 }
 
+//fault
+//Fault function, for when there is a fault. Zeros all outputs
+//and never returns
+//Needs specific behaviors based on the fault that caused it
+//Caller Value      Fault Type:
+//  0                   BMS
+//  1                   BSPD
+//  2                   IMD
+//  3                   Redundant ADC fail
 void fault(int caller)
 {
+    //Disable Notifications if necessary
+    if(caller == 3)
+        rtiStopCounter(rtiREG1, ritCOUNTER_BLOCK0);
 
+    //Zero Throttle and Regen Requests
+
+
+    while(1);
 }
 
+//startup
+//Function for running all startup functions after the start
+//button has been pressed
 void startup()
 {
 
 }
 
+//brakeCheck
+//Checks if the brake is applied above BRAKE_APPLIED_CUTOFF
+//returns 1 if brake is applied
+//returns 0 if brake is not applied
 int brakeCheck()
 {
     unsigned int adcArray[4];
@@ -200,6 +255,13 @@ int brakeCheck()
         return 0;
 }
 
+//adcConversion
+//Runs redundant ADC on all 4 analog inputs, checks for greater than 10% difference
+//between redundant ADC inputs and returns the averaged ADC values in an output array
+//
+//Output array is ordered as follows
+//[0]-Throttle1 [1]-Throttle2
+//[2]-Brake     [3]-Angle
 unsigned int *adcCoversion()
 {
     adcData_t adc1Array[4], adc2Array[4];
@@ -251,7 +313,7 @@ unsigned int *adcCoversion()
     if(diff < 0)
         diff = diff * -1;
     if(diff > 410)
-        fault(0);
+        fault(3);
     outputArray[0] = (throttle1[0]+throttle1[1])/2;
 
     //Check and average throttle 2
@@ -259,7 +321,7 @@ unsigned int *adcCoversion()
     if(diff < 0)
         diff = diff * -1;
     if(diff > 410)
-        fault(0);
+        fault(3);
     outputArray[1] = (throttle2[0]+throttle2[1])/2;
 
     //Check and average brakes
@@ -267,7 +329,7 @@ unsigned int *adcCoversion()
     if(diff < 0)
         diff = diff * -1;
     if(diff > 410)
-        fault(0);
+        fault(3);
     outputArray[2] = (brake[0]+brake[1])/2;
 
     //Check and average steering angle
@@ -275,10 +337,11 @@ unsigned int *adcCoversion()
     if(diff < 0)
         diff = diff * -1;
     if(diff > 410)
-        fault(0);
+        fault(3);
     outputArray[3] = (throttle1[0]+throttle1[1])/2;
 
     //Return array of averaged ADC values
-    return outputArray;
+    return outputArray;     //WILL THIS ARRAY GET YEETED ON RETURN
+                            //DO WE NEED TO MALLOC
 }
 /* USER CODE END */
