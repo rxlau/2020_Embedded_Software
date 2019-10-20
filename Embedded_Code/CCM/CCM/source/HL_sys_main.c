@@ -72,8 +72,44 @@
 
 /* USER CODE BEGIN (2) */
 
+//Parameters
+//====================================
+#define BRAKE_APPLIED_CUTOFF 400
+//====================================
+
+//Pin enumerations
+//====================================
+//GIOA
+#define BMSFault 0
+#define BSPDFault 1
+#define IMDFault 2
+#define StartButton 3
+#define TVToggle 4
+#define RegenToggle 5
+#define TractionToggle 6
+
+//N2HET2
+#define RTDS 23
+#define BrakeLight 11
+#define TimeDelay 10
+#define BMSLED 9
+#define IMDLED 22
+//====================================
+
+
 //User Function Declarations
+//====================================
+unsigned int *adcCoversion();
+int brakeCheck();
 void fault(int caller);
+void startup();
+//====================================
+
+//Global Variables ;-;
+//====================================
+
+//====================================
+
 
 /* USER CODE END */
 
@@ -121,7 +157,19 @@ int main(void)
 //GIO Notification for FAULT causing pins
 void gioNotification(gioPORT_t *port, uint32 bit)
 {
+    if(bit==BMSFault || bit==IMDFault || bit==BSPDFault)  //Fault causing inputs
+        fault(1);
+    else if(bit==StartButton) //Start Button signal
+    {
+        //Check Brake
+        if(brakeCheck() == 1)
+        {
+            //Startup Sequence
 
+        }
+        else
+            return;
+    }
 }
 
 void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
@@ -134,5 +182,103 @@ void fault(int caller)
 
 }
 
+void startup()
+{
 
+}
+
+int brakeCheck()
+{
+    unsigned int adcArray[4];
+    unsigned int brakeValue;
+    adcArray = adcConversion();
+    brakeValue = adcArray[2];
+
+    if(brakeValue > BRAKE_APPLIED_CUTOFF)
+        return 1;
+    else
+        return 0;
+}
+
+unsigned int *adcCoversion()
+{
+    adcData_t adc1Array[4], adc2Array[4];
+    unsigned int brake[2], throttle1[2], throttle2[2], angle[2];
+    unsigned int outputArray[4];
+    unsigned int tempValue1, tempValue2;
+    int num1, num2, i, diff;
+
+    //Start ADC Conversion
+    adcStartConversion(adcREG1, adcGROUP1);
+    adcStartConversion(adcREG2, adcGROUP1);
+
+    //Wait for ADC to complete
+    while(!adcIsConversionComplete(adcREG1, adcGROUP1) ||
+            !adcIsConversionComplete(adcREG2, adcGROUP1) );
+
+    //Get ADC Data
+    num1 = adcGetData(adcREG1, 1U, adc1Array);
+    num2 = adcGetData(adcREG2, 1U, adc2Array);
+
+    for(i = 0; i<num1; i++)
+    {
+        tempValue1 = adc1Array[i].value;
+        tempValue2 = adc2Array[i].value;
+
+        switch(i)
+        {
+        case 0:
+            brake[0] = tempValue1;
+            throttle2[1] = tempValue2;
+            break;
+        case 1:
+            angle[0] = tempValue1;
+            brake[1] = tempValue2;
+            break;
+        case 2:
+            throttle1[0] = tempValue1;
+            angle[1] = tempValue2;
+            break;
+        case 3:
+            throttle2[0] = tempValue1;
+            throttle1[1] = tempValue2;
+            break;
+        }
+    }
+
+    //Check and average throttle 1
+    diff = throttle1[0] - throttle1[1];
+    if(diff < 0)
+        diff = diff * -1;
+    if(diff > 410)
+        fault(0);
+    outputArray[0] = (throttle1[0]+throttle1[1])/2;
+
+    //Check and average throttle 2
+    diff = throttle2[0] - throttle2[1];
+    if(diff < 0)
+        diff = diff * -1;
+    if(diff > 410)
+        fault(0);
+    outputArray[1] = (throttle2[0]+throttle2[1])/2;
+
+    //Check and average brakes
+    diff = brake[0] - brake[1];
+    if(diff < 0)
+        diff = diff * -1;
+    if(diff > 410)
+        fault(0);
+    outputArray[2] = (brake[0]+brake[1])/2;
+
+    //Check and average steering angle
+    diff = throttle1[0] - throttle1[1];
+    if(diff < 0)
+        diff = diff * -1;
+    if(diff > 410)
+        fault(0);
+    outputArray[3] = (throttle1[0]+throttle1[1])/2;
+
+    //Return array of averaged ADC values
+    return outputArray;
+}
 /* USER CODE END */
