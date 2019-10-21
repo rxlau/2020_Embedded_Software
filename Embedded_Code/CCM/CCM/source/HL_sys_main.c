@@ -173,7 +173,12 @@ int main(void)
 
 /* USER CODE BEGIN (4) */
 
-//GIO Notification for FAULT causing pins
+//gioNotification
+//Function that is called every time a gio Interrupt is issued
+//Function has different functionality based on which bit causes
+//the interrupt
+//Bits 0, 1, 2 -> BMS, IMD, and BSPD faults respectively
+//Bit 3 -> Start button
 void gioNotification(gioPORT_t *port, uint32 bit)
 {
     if(bit==BMSFault || bit==IMDFault || bit==BSPDFault)  //Fault causing inputs
@@ -190,21 +195,55 @@ void gioNotification(gioPORT_t *port, uint32 bit)
             startup();
             //Start RTI Counter
             rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
-
         }
         else
             return;
     }
 }
 
+//rtiNotification
+//Function that is called every time an RTI interrupt is issued
+//Function has different functionality based on which RTI interrupt
+//calls the function.
+//rtiNOTIFICATION_COMPARE0 --> ADC translation and torque vectoring
+//rtiNOTIFICATION_COMPARE1 --> Battery Fan management
 void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 {
     if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
     {
+        unsigned int adcArray[4];
+        //Get ADC Data
+        adcArray = adcConversion();
+
+        //Check ADC Data
+
+
+        //Get CAN Bus Data
+
+
+        //Run Torque or Regen Vectoring Algorithm
+
+
+        //Output to Motors (update PWM).
+
+
+        //Misc output functions (brake light)
+        if(adcArray[2] > BRAKE_APPLIED_CUTOFF)
+            gioSetBit(hetPORT2, BrakeLight, 1);
+        else
+            gioSetBit(hetPORT2, BrakeLight, 0);
+
+        //Output to CAN bus/OBD2
+
 
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
+        //Get data from CAN Bus
+
+        //Evaluate data and figure out new output
+
+        //Output to PWM
 
     }
 }
@@ -226,7 +265,9 @@ void fault(int caller)
 
     //Zero Throttle and Regen Requests
 
+    //Set nonessential outputs based caller (DASH LEDs)
 
+    //Wait forever
     while(1);
 }
 
@@ -342,6 +383,8 @@ unsigned int *adcCoversion()
 
     //Return array of averaged ADC values
     return outputArray;     //WILL THIS ARRAY GET YEETED ON RETURN
-                            //DO WE NEED TO MALLOC
+                            //DO WE NEED TO MALLOC -- Probably
+                            //or we can make array static, just have to make sure its
+                            //not used by two functions at the same time
 }
 /* USER CODE END */
