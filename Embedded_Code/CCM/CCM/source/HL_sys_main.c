@@ -276,7 +276,33 @@ void fault(int caller)
 //button has been pressed
 void startup()
 {
+    //Initialize het struct, set duty cycle to 100%, and set period to 2sec
+    hetSIGNAL_t speaker;
+    uint32 speakerDuty = 100;
+    uint32 speakerPeriod = 2000000;
+    int initialTime = 0;
+    int finalTime = 0;
+    int totalTime = 0;
 
+    speaker.duty = speakerDuty;
+    speaker.period = speakerPeriod;
+    initialTime = hetGetTimestamp(speaker);
+
+    //Set pwm output to begin (turn on speaker)
+    pwmSetSignal(hetRAM2, pwm5, speaker); //not sure if pwm5 is correct value
+
+    //While the speaker is on, let it stay on for 2sec, then turn it off
+    while(1){
+        finalTime = hetGetTimestamp(speaker);
+        totalTime = finalTime - initialTime;
+        if (totalTime < 0){
+            //TODO: figure out max value to calculate time elapsed if it looped
+        }
+        else if (totalTime > 2000000){ //TODO: not sure if time value is in microseconds or not
+            speaker.duty = 0;
+            break;
+        }
+    }
 }
 
 //brakeCheck
