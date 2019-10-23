@@ -100,7 +100,7 @@
 
 //User Function Declarations
 //====================================
-unsigned int *adcCoversion();
+unsigned int *adcConversion();
 int brakeCheck();
 void fault(int caller);
 void startup();
@@ -299,7 +299,7 @@ void startup()
             //TODO: figure out max value to calculate time elapsed if it looped
         }
         else if (totalTime > 2000000){ //TODO: not sure if time value is in microseconds or not
-            speaker.duty = 0;
+            pwmSetDuty(hetRAM2, pwm5, 0)
             break;
         }
     }
@@ -329,11 +329,11 @@ int brakeCheck()
 //Output array is ordered as follows
 //[0]-Throttle1 [1]-Throttle2
 //[2]-Brake     [3]-Angle
-unsigned int *adcCoversion()
+unsigned int *adcConversion()
 {
     adcData_t adc1Array[4], adc2Array[4];
     unsigned int brake[2], throttle1[2], throttle2[2], angle[2];
-    unsigned int outputArray[4];
+    static unsigned int outputArray[4];
     unsigned int tempValue1, tempValue2;
     int num1, num2, i, diff;
 
@@ -408,9 +408,6 @@ unsigned int *adcCoversion()
     outputArray[3] = (throttle1[0]+throttle1[1])/2;
 
     //Return array of averaged ADC values
-    return outputArray;     //WILL THIS ARRAY GET YEETED ON RETURN
-                            //DO WE NEED TO MALLOC -- Probably
-                            //or we can make array static, just have to make sure its
-                            //not used by two functions at the same time
+    return outputArray;
 }
 /* USER CODE END */
