@@ -286,14 +286,14 @@ void startup()
 
     speaker.duty = speakerDuty;
     speaker.period = speakerPeriod;
-    initialTime = hetGetTimestamp(speaker);
+    initialTime = hetGetTimestamp(hetRAM2);
 
     //Set pwm output to begin (turn on speaker)
     pwmSetSignal(hetRAM2, pwm5, speaker); //not sure if pwm5 is correct value
 
     //While the speaker is on, let it stay on for 2sec, then turn it off
     while(1){
-        finalTime = hetGetTimestamp(speaker);
+        finalTime = hetGetTimestamp(hetRAM2);
         totalTime = finalTime - initialTime;
         if (totalTime < 0){
             //TODO: figure out max value to calculate time elapsed if it looped
