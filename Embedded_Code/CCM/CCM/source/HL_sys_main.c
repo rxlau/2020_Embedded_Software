@@ -76,6 +76,7 @@
 //====================================
 #define BRAKE_APPLIED_CUTOFF 400
 #define PWM_PERIOD 100
+#define BATTERY_TEMP_FAN_TURNON 0xFFF
 //====================================
 
 //Pin enumerations
@@ -215,11 +216,19 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         //Get ADC Data
         adcArray = adcConversion();
 
+        //TODO: Calibrate adc values once on vehicle (maybe do in adc conversion function)
+        int adcDiff = adcArray[0] - adcArray[1];
+        if (adcDiff < 0)
+            adcDiff *-1;
         //Check ADC Data
-
+        if (adcDiff > 410){
+            //Set motor output = 0
+            //TODO: May need to use setSignal
+            ThrottleL.duty = 0;
+            ThrottleR.duty = 0;
+        }
 
         //Get CAN Bus Data
-
 
         //Run Torque or Regen Vectoring Algorithm
 
@@ -239,11 +248,36 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
-        //Get data from CAN Bus
+        //TODO: maybe move these variable elsewhere
+        static char bms1_temp[6];
+        static char bms2_temp[6];
+        unsigned int internalTemp1;
+        unsigned int internalTemp2;
+        unsigned int ext1Temp1;
+        unsigned int ext2Temp1;
+        unsigned int ext1Temp2;
+        unsigned int ext2Temp2;
 
+        //Get data from CAN Bus
+        canGetData(canREG1,0x00,bms1_temp);
+        canGetData(canREG1,0x01,bms2_temp);
+
+        //TODO: Internal temp may not be desired data for this calculation
         //Evaluate data and figure out new output
+        internalTemp1 = bms1_temp[0];
+        internalTemp1 = internalTemp1 << 4;
+        internalTemp1 = internalTemp1 | bms1_temp[1];
+
+        internalTemp2 = bms2_temp[0];
+        internalTemp2 = internalTemp2 << 4;
+        internalTemp2 = internalTemp2 | bms2_temp[1];
 
         //Output to PWM
+        //TODO: Add "better" algorithm if necessary, and find "turnon value"
+        if((internalTemp1 || internalTemp2) > BATTERY_TEMP_FAN_TURNON){
+            BatteryFans.duty = 100;
+        }
+
 
     }
 }
@@ -400,12 +434,12 @@ unsigned int *adcConversion()
     outputArray[2] = (brake[0]+brake[1])/2;
 
     //Check and average steering angle
-    diff = throttle1[0] - throttle1[1];
+    diff = angle[0] - angle[1];
     if(diff < 0)
         diff = diff * -1;
     if(diff > 410)
         fault(3);
-    outputArray[3] = (throttle1[0]+throttle1[1])/2;
+    outputArray[3] = (angle[0]+angle[1])/2;
 
     //Return array of averaged ADC values
     return outputArray;
