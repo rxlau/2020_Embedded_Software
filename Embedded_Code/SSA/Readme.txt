@@ -1,4 +1,5 @@
 Name: Suspension System Array
-Engineers: Andrew Kettle and Jada Berenguer
+Engineers: Leslie Uribe and Micheal Barbosa
+Test Engineers: Andrew Kettle and Jada Berenguer
 
 Description:
