@@ -115,7 +115,7 @@ void rtinotification(rtiBASE_t *rtiREG, uint32 notification) {
     //Run ADC
     adcStartConversion(adcREG1, adcGROUP1);
     adcStartConversion(adcREG2, adcGROUP1);
-    while(!adcIsComplete(adcREG1, adcGROUP1) || !adcIsCopmlete(adcREG2, adcGROUP1) );
+    while(!adcIsComplete(adcREG1, adcGROUP1) || !adcIsComplete(adcREG2, adcGROUP1) );
     num1 = adcGetData(adcREG1, 1U, adc1_array);
     num2 = adcGetData(adcREG2, 1U, adc2_array);
 
