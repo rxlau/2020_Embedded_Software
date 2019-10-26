@@ -76,6 +76,7 @@
 //====================================
 #define BRAKE_APPLIED_CUTOFF 400
 #define PWM_PERIOD 100
+#define BATTERY_TEMP_FAN_TURNON 0xFFF
 //====================================
 
 //Pin enumerations
@@ -94,14 +95,17 @@
 #define BrakeLight 11
 #define TimeDelay 10
 #define BMSLED 9
+#define BSPDLED 14
 #define IMDLED 22
 //====================================
 
 
 //User Function Declarations
 //====================================
-unsigned int *adcCoversion();
+unsigned int *adcConversion();
 int brakeCheck();
+int APPSFault(int);
+int BSEFault(unsigned int, unsigned int, unsigned int);
 void fault(int caller);
 void startup();
 //====================================
@@ -111,6 +115,7 @@ void startup();
 hetSIGNAL_t ThrottleL, ThrottleR;
 hetSIGNAL_t RegenL, RegenR;
 hetSIGNAL_t BatteryFans;
+int bseFlag = 0;
 //====================================
 
 
@@ -215,18 +220,28 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         //Get ADC Data
         adcArray = adcConversion();
 
+        //TODO: Calibrate adc values once on vehicle (maybe do in adc conversion function)
+        int adcDiff = adcArray[0] - adcArray[1];
+        if (adcDiff < 0)
+            adcDiff *= -1;
         //Check ADC Data
+        if(APPSFault(adcDiff) || BSEFault(adcArray[0],adcArray[1],adcArray[2]))
+        {
+            //Set motor output = 0
+            pwmSetDuty(hetRAM1,pwm0,0);
+            pwmSetDuty(hetRAM1,pwm1,0);
+        }
+        else
+        {
 
+            //Get CAN Bus Data
+            //What data do we want/need right now? all of it?
 
-        //Get CAN Bus Data
+            //Run Torque or Regen Vectoring Algorithm
 
+            //Output to Motors (update PWM).
 
-        //Run Torque or Regen Vectoring Algorithm
-
-
-        //Output to Motors (update PWM).
-
-
+        }
         //Misc output functions (brake light)
         if(adcArray[2] > BRAKE_APPLIED_CUTOFF)
             gioSetBit(hetPORT2, BrakeLight, 1);
@@ -239,11 +254,35 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
-        //Get data from CAN Bus
+        //TODO: maybe move these variable elsewhere
+        static uint8 bms1_temp[6];
+        static uint8 bms2_temp[6];
+        unsigned int internalTemp1;
+        unsigned int internalTemp2;
+//        unsigned int ext1Temp1;
+//        unsigned int ext2Temp1;
+//        unsigned int ext1Temp2;
+//        unsigned int ext2Temp2;
 
+        //Get data from CAN Bus
+        canGetData(canREG1,0x00,bms1_temp);
+        canGetData(canREG1,0x01,bms2_temp);
+
+        //TODO: Internal temp may not be desired data for this calculation
         //Evaluate data and figure out new output
+        internalTemp1 = bms1_temp[0];
+        internalTemp1 = internalTemp1 << 4;
+        internalTemp1 = internalTemp1 | bms1_temp[1];
+
+        internalTemp2 = bms2_temp[0];
+        internalTemp2 = internalTemp2 << 4;
+        internalTemp2 = internalTemp2 | bms2_temp[1];
 
         //Output to PWM
+        //TODO: Add "better" algorithm if necessary, and find "turnon value"
+        if((internalTemp1 || internalTemp2) > BATTERY_TEMP_FAN_TURNON)
+            pwmSetDuty(hetRAM1,pwm3,100);
+
 
     }
 }
@@ -261,12 +300,21 @@ void fault(int caller)
 {
     //Disable Notifications if necessary
     if(caller == 3)
-        rtiStopCounter(rtiREG1, ritCOUNTER_BLOCK0);
+        rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK0);
 
     //Zero Throttle and Regen Requests
+    pwmSetDuty(hetRAM1,pwm0,0);
+    pwmSetDuty(hetRAM1,pwm1,0);
+    pwmSetDuty(hetRAM1,pwm2,0);
+    pwmSetDuty(hetRAM1,pwm4,0);
 
     //Set nonessential outputs based caller (DASH LEDs)
-
+    if(caller == 0)
+        gioSetBit(hetPORT2, BMSLED, 1);
+    if(caller == 1)
+        gioSetBit(hetPORT2, BSPDLED, 1);
+    if(caller == 2)
+        gioSetBit(hetPORT2, IMDLED, 1);
     //Wait forever
     while(1);
 }
@@ -276,7 +324,35 @@ void fault(int caller)
 //button has been pressed
 void startup()
 {
+    //Initialize het struct, set duty cycle to 100%, and set period to 2sec
+    hetSIGNAL_t speaker;
+    uint32 speakerDuty = 100;
+    uint32 speakerPeriod = 2000000;
+    int initialTime = 0;
+    int finalTime = 0;
+    int totalTime = 0;
 
+    speaker.duty = speakerDuty;
+    speaker.period = speakerPeriod;
+    initialTime = hetGetTimestamp(hetRAM2);
+
+    //Set pwm output to begin (turn on speaker)
+    pwmSetSignal(hetRAM2, pwm5, speaker); //not sure if pwm5 is correct value
+
+    //While the speaker is on, let it stay on for 2sec, then turn it off
+    while(1){
+        finalTime = hetGetTimestamp(hetRAM2);
+        totalTime = finalTime - initialTime;
+        if (totalTime < 0)
+        {
+            //TODO: figure out max value to calculate time elapsed if it looped
+        }
+        else if (totalTime > 2000000)
+        { //TODO: not sure if time value is in microseconds or not
+            pwmSetDuty(hetRAM2, pwm5, 0);
+            break;
+        }
+    }
 }
 
 //brakeCheck
@@ -303,11 +379,11 @@ int brakeCheck()
 //Output array is ordered as follows
 //[0]-Throttle1 [1]-Throttle2
 //[2]-Brake     [3]-Angle
-unsigned int *adcCoversion()
+unsigned int *adcConversion()
 {
     adcData_t adc1Array[4], adc2Array[4];
     unsigned int brake[2], throttle1[2], throttle2[2], angle[2];
-    unsigned int outputArray[4];
+    static unsigned int outputArray[4];
     unsigned int tempValue1, tempValue2;
     int num1, num2, i, diff;
 
@@ -374,17 +450,41 @@ unsigned int *adcCoversion()
     outputArray[2] = (brake[0]+brake[1])/2;
 
     //Check and average steering angle
-    diff = throttle1[0] - throttle1[1];
+    diff = angle[0] - angle[1];
     if(diff < 0)
         diff = diff * -1;
     if(diff > 410)
         fault(3);
-    outputArray[3] = (throttle1[0]+throttle1[1])/2;
+    outputArray[3] = (angle[0]+angle[1])/2;
 
     //Return array of averaged ADC values
-    return outputArray;     //WILL THIS ARRAY GET YEETED ON RETURN
-                            //DO WE NEED TO MALLOC -- Probably
-                            //or we can make array static, just have to make sure its
-                            //not used by two functions at the same time
+    return outputArray;
+}
+
+int APPSFault(int adcDiff)
+{
+    if (adcDiff > 410)
+        return 1;
+    else
+        return 0;
+}
+
+//TODO: can be done without global variable?
+int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
+{
+    if((bseFlag) && (accel1 > 205 || accel2 > 205))//205 is 5% of 4096
+    {
+        return 1;
+    }
+    else if((accel1 > 1024 || accel2 > 1024) && (brake > BRAKE_APPLIED_CUTOFF))//1024 is 25% of 4096
+    {
+        bseFlag = 1;
+        return 1;
+    }
+    else if((bseFlag) && (accel1 < 205 && accel2 < 205))//205 is 5% of 4096
+    {
+        bseFlag = 0;
+        return 0;
+    }
 }
 /* USER CODE END */
