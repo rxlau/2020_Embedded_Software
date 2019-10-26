@@ -235,6 +235,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         {
 
             //Get CAN Bus Data
+            //What data do we want/need right now? all of it?
 
             //Run Torque or Regen Vectoring Algorithm
 
