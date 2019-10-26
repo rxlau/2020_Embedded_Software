@@ -823,6 +823,33 @@ void rtiCompare1Interrupt(void)
 }
 
 
+/* USER CODE BEGIN (48) */
+/* USER CODE END */
+
+/** @fn void rtiCompare2Interrupt(void)
+*   @brief RTI1 Compare 2 Interrupt Handler
+*
+*   RTI1 Compare 2 interrupt handler 
+*
+*/
+#pragma CODE_STATE(rtiCompare2Interrupt, 32)
+#pragma INTERRUPT(rtiCompare2Interrupt, IRQ)
+
+/* SourceId : RTI_SourceId_024 */
+/* DesignId : RTI_DesignId_022 */
+/* Requirements : HL_CONQ_RTI_SR14 */
+void rtiCompare2Interrupt(void)
+{
+/* USER CODE BEGIN (49) */
+/* USER CODE END */
+
+    rtiREG1->INTFLAG = 4U;
+    rtiNotification(rtiREG1,rtiNOTIFICATION_COMPARE2);
+
+/* USER CODE BEGIN (50) */
+/* USER CODE END */
+}
+
 
 
 

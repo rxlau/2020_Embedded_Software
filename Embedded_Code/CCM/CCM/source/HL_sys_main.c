@@ -56,7 +56,7 @@
 #include "HL_can.h"
 #include "HL_gio.h"
 #include "HL_het.h"
-#include "HL_rti.c"
+#include "HL_rti.h"
 #include "HL_sys_core.h"
 #include "stdlib.h"
 
@@ -99,23 +99,31 @@
 #define IMDLED 22
 //====================================
 
+//PWM Channels
+//====================================
+#define AccelL pwm0
+#define AccelR pwm1
+#define RegenL pwm2
+#define RegenR pwm3
+#define Fans pwm4
+//====================================
+
 
 //User Function Declarations
 //====================================
-unsigned int *adcConversion();
-int brakeCheck();
+void adcConversion(unsigned int *adcArray);
 int APPSFault(int);
+int brakeCheck();
 int BSEFault(unsigned int, unsigned int, unsigned int);
 void fault(int caller);
+void pwmSetup();
 void startup();
 //====================================
 
 //Global Variables ;-;
 //====================================
-hetSIGNAL_t ThrottleL, ThrottleR;
-hetSIGNAL_t RegenL, RegenR;
-hetSIGNAL_t BatteryFans;
 int bseFlag = 0;
+int timeDelayFlag = 0;
 //====================================
 
 
@@ -133,12 +141,12 @@ int main(void)
     rtiInit();
 
     //Set interrupt priorities
-        /*PENDING EXTERNAL TESTING*/
-        //vimChannelMap();
+        //Don't need this, this is only for simultaneous interrupts
 
     //Setup RTI
     rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE0);   //Enable ADC/Torque Interrupt
     rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE1);   //Enable Battery Management Interrupt
+    rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE2);   //Enable utility/time delay notification
 
     //Enable notifications (IRQ and FIQ)
     _enable_interrupt_();
@@ -149,23 +157,18 @@ int main(void)
     adcCalibration(adcREG2);
 
     //Setup PWM outputs
-    ThrottleL.duty = 0;             //NEED TO TEST IF I CAN MODIFY THESE WITHOUT RECALLING SETSIGNAL
-    ThrottleL.period = PWM_PERIOD;
+    pwmSetup();
 
-    ThrottleR.duty = 0;
-    ThrottleR.period = PWM_PERIOD;
+    //Setup for time delay
+        //After a set time delay we need to set time delay pin to high
+        //Leave time delay pin unused after
+        //Need to initially have start button disabled
+        //Wait for time to pass and call ritnotification compare2 using rticounter 1
+    gioDisableNotification(gioPORTA, StartButton);  //Make sure start button is disabled
 
-    RegenL.duty = 0;
-    RegenL.period = PWM_PERIOD;
+    rtiSetPeriod(rtiREG1, rtiCOMPARE2, 10000);      //Set period to 10000ms => 10 seconds
+    rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
 
-    RegenR.duty = 0;
-    RegenR.period = PWM_PERIOD;
-
-    BatteryFans.duty = 0;
-    BatteryFans.period = PWM_PERIOD;
-
-    //Start RTI Counter
-    //rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
 
     //Loop Forever
     while(1);
@@ -218,7 +221,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     {
         unsigned int adcArray[4];
         //Get ADC Data
-        adcArray = adcConversion();
+        adcConversion(adcArray);
 
         //TODO: Calibrate adc values once on vehicle (maybe do in adc conversion function)
         int adcDiff = adcArray[0] - adcArray[1];
@@ -324,35 +327,14 @@ void fault(int caller)
 //button has been pressed
 void startup()
 {
-    //Initialize het struct, set duty cycle to 100%, and set period to 2sec
-    hetSIGNAL_t speaker;
-    uint32 speakerDuty = 100;
-    uint32 speakerPeriod = 2000000;
-    int initialTime = 0;
-    int finalTime = 0;
-    int totalTime = 0;
+    //Turn on RTDS for 1-3 seconds
+    rtiSetPeriod(rtiREG1, rtiCOMPARE2, 3000);       //Set Period to 3 Seconds
+    rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
+    gioSetBit(hetPORT2, RTDS, 1);
 
-    speaker.duty = speakerDuty;
-    speaker.period = speakerPeriod;
-    initialTime = hetGetTimestamp(hetRAM2);
+    //Blink dash LEDs
+    //I'll do this later - LOOK INTO RIT COMPARE TICKS
 
-    //Set pwm output to begin (turn on speaker)
-    pwmSetSignal(hetRAM2, pwm5, speaker); //not sure if pwm5 is correct value
-
-    //While the speaker is on, let it stay on for 2sec, then turn it off
-    while(1){
-        finalTime = hetGetTimestamp(hetRAM2);
-        totalTime = finalTime - initialTime;
-        if (totalTime < 0)
-        {
-            //TODO: figure out max value to calculate time elapsed if it looped
-        }
-        else if (totalTime > 2000000)
-        { //TODO: not sure if time value is in microseconds or not
-            pwmSetDuty(hetRAM2, pwm5, 0);
-            break;
-        }
-    }
 }
 
 //brakeCheck
@@ -363,7 +345,7 @@ int brakeCheck()
 {
     unsigned int adcArray[4];
     unsigned int brakeValue;
-    adcArray = adcConversion();
+    adcConversion(adcArray);
     brakeValue = adcArray[2];
 
     if(brakeValue > BRAKE_APPLIED_CUTOFF)
@@ -379,7 +361,7 @@ int brakeCheck()
 //Output array is ordered as follows
 //[0]-Throttle1 [1]-Throttle2
 //[2]-Brake     [3]-Angle
-unsigned int *adcConversion()
+void adcConversion(unsigned int *adcArray)
 {
     adcData_t adc1Array[4], adc2Array[4];
     unsigned int brake[2], throttle1[2], throttle2[2], angle[2];
@@ -431,7 +413,7 @@ unsigned int *adcConversion()
         diff = diff * -1;
     if(diff > 410)
         fault(3);
-    outputArray[0] = (throttle1[0]+throttle1[1])/2;
+    adcArray[0] = (throttle1[0]+throttle1[1])/2;
 
     //Check and average throttle 2
     diff = throttle2[0] - throttle2[1];
@@ -439,7 +421,7 @@ unsigned int *adcConversion()
         diff = diff * -1;
     if(diff > 410)
         fault(3);
-    outputArray[1] = (throttle2[0]+throttle2[1])/2;
+    adcArray[1] = (throttle2[0]+throttle2[1])/2;
 
     //Check and average brakes
     diff = brake[0] - brake[1];
@@ -447,7 +429,7 @@ unsigned int *adcConversion()
         diff = diff * -1;
     if(diff > 410)
         fault(3);
-    outputArray[2] = (brake[0]+brake[1])/2;
+    adcArray[2] = (brake[0]+brake[1])/2;
 
     //Check and average steering angle
     diff = angle[0] - angle[1];
@@ -455,12 +437,16 @@ unsigned int *adcConversion()
         diff = diff * -1;
     if(diff > 410)
         fault(3);
-    outputArray[3] = (angle[0]+angle[1])/2;
+    adcArray[3] = (angle[0]+angle[1])/2;
 
     //Return array of averaged ADC values
-    return outputArray;
+    //return outputArray;
 }
 
+//APPSFault
+//Used for checking the difference between two throttle inputs
+//Returns 1 if greater than 10% diff => fault
+//Returns 0 if no fault
 int APPSFault(int adcDiff)
 {
     if (adcDiff > 410)
@@ -486,5 +472,26 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
         bseFlag = 0;
         return 0;
     }
+}
+
+//pwmSetup
+//Used for initial setup of pwm signals
+//Only exists for the sake of making code look cleaner
+void pwmSetup()
+{
+    pwmSetDuty(hetRAM1, AccelL, 0);
+    pwmSetPeriod(hetRAM1, AccelL, PWM_PERIOD);
+
+    pwmSetDuty(hetRAM1, AccelR, 0);
+    pwmSetPeriod(hetRAM1, AccelR, PWM_PERIOD);
+
+    pwmSetDuty(hetRAM1, RegenL, 0);
+    pwmSetPeriod(hetRAM1, RegenL, PWM_PERIOD);
+
+    pwmSetDuty(hetRAM1, RegenR, 0);
+    pwmSetPeriod(hetRAM1, RegenR, PWM_PERIOD);
+
+    pwmSetDuty(hetRAM1, Fans, 0);
+    pwmSetPeriod(hetRAM1, Fans, PWM_PERIOD);
 }
 /* USER CODE END */
