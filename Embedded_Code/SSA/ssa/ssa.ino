@@ -13,7 +13,10 @@ void getI2CData();
 void I2C_init();
 void getTemp();
 
-//reassign pins according to pinout
+//pin declerations
+
+int sda = P2_2;
+int scl = P2_1;
 int irpin1 = A0; //3 analog ir sensors
 int irpin2 = A1;
 int irpin3 = A2;
@@ -32,7 +35,7 @@ uint8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
 
 //registers
 
-#define lsm9ds1_ag 0x6B //device reg, FIND OUT WHAT THIS IS CONCRETELY
+#define lsm9ds1_ag 0x6B //device reg
 
 #define gyro_control1 0x10 //Control of the gyro reg
 #define accel_control4 0x1E //Control of the accel reg4
@@ -74,6 +77,7 @@ void loop() {
 
 //Reading IMU
   getI2CData();
+  delay(1000);
 
 //Reading IR sensors
 
@@ -110,6 +114,9 @@ void loop() {
 
 void I2C_init()
 {
+  pinMode(scl, INPUT_PULLUP);
+  pinMode(sda, INPUT_PULLUP);
+  
   Wire.begin(); //initialize i2c transmission
   Wire.beginTransmission(lsm9ds1_ag);
   //Wire.write(strtw);
@@ -144,7 +151,7 @@ void getI2CData() //possible specify what data we want later instead of just inc
   Wire.write(accelZ0);
   Wire.write(accelZ1);
 
-  Wire.endTransmission(false); //continue transmission until reading is done
+  Wire.endTransmission(true); //continue transmission until reading is done
 
   Wire.requestFrom(lsm9ds1_ag, 24); //requesting 12 bytes, or 3 16 bit numbers.
   //readbytes = Wire.available(); //getting real numbers
@@ -168,8 +175,8 @@ void getI2CData() //possible specify what data we want later instead of just inc
 
   Wire.endTransmission();
 
-  if((gX0 != 255) && (gX1 != 255) && (gY0 != 255) && (gY1 != 255) && (gZ0 != 255) && (gZ1 != 255) && (aX0 != 255) && (aX1 != 255) && (aY0 != 255) && (aY1 != 255) && (aZ0 != 255) && (aZ1 != 255))
-  {
+  //if((gX0 != 255) && (gX1 != 255) && (gY0 != 255) && (gY1 != 255) && (gZ0 != 255) && (gZ1 != 255) && (aX0 != 255) && (aX1 != 255) && (aY0 != 255) && (aY1 != 255) && (aZ0 != 255) && (aZ1 != 255))
+  //{
   Serial.print("Gyro X0= ");
   Serial.println(gX0);
   Serial.print("Gyro X1= ");
@@ -195,7 +202,7 @@ void getI2CData() //possible specify what data we want later instead of just inc
   Serial.println(aZ0);
   Serial.print("Accel Z1= ");
   Serial.println(aZ1);
-  }
+  //}
 
   
 }
