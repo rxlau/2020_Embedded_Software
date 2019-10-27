@@ -124,6 +124,7 @@ void startup();
 //====================================
 int bseFlag = 0;
 int timeDelayFlag = 0;
+int compare2Counter = 0;
 //====================================
 
 
@@ -165,8 +166,6 @@ int main(void)
         //Need to initially have start button disabled
         //Wait for time to pass and call ritnotification compare2 using rticounter 1
     gioDisableNotification(gioPORTA, StartButton);  //Make sure start button is disabled
-
-    rtiSetPeriod(rtiREG1, rtiCOMPARE2, 10000);      //Set period to 10000ms => 10 seconds
     rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
 
 
@@ -201,8 +200,6 @@ void gioNotification(gioPORT_t *port, uint32 bit)
             gioDisableNotification(gioPORTA, StartButton);
             //Run Start Sequence
             startup();
-            //Start RTI Counter
-            rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
         }
         else
             return;
@@ -288,6 +285,50 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 
 
     }
+    if(notification == rtiNOTIFICATION_COMPARE2 && timeDelayFlag == 0) //Time Delay
+    {
+        compare2Counter ++;
+        if(compare2Counter == 20)
+        {
+            rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK1);     //Stop Counter 1
+            rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);
+
+            gioSetBit(hetPORT2, TimeDelay, 1);              //Set Time Delay pin to high
+
+            timeDelayFlag = 1;                              //Set Time Delay flag to high
+            compare2Counter = 0;
+
+            gioEnableNotification(gioPORTA, StartButton);   //Enable Start Button
+        }
+    }
+    if(notification == rtiNOTIFICATION_COMPARE2 &&timeDelayFlag == 1)//RTDS
+    {
+        compare2Counter ++;
+        if(compare2Counter == 6)
+        {
+            rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK1);
+            rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);
+
+            gioSetBit(hetPORT2, RTDS, 0);   //Disable RTDS
+
+            compare2Counter = 0;
+            //Need to set all DASH LEDS low
+            gioSetBit(hetPORT2, BMSLED, 0);
+            gioSetBit(hetPORT2, IMDLED, 0);
+            gioSetBit(hetPORT2, BSPDLED, 0);
+
+            //Start RTI Counter 0
+            rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK0);
+        }
+        else
+        {
+            gioToggleBit(hetPORT2, BMSLED);
+            gioToggleBit(hetPORT2, IMDLED);
+            gioToggleBit(hetPORT2, BSPDLED);
+        }
+
+    }
+
 }
 
 //fault
@@ -328,13 +369,11 @@ void fault(int caller)
 void startup()
 {
     //Turn on RTDS for 1-3 seconds
-    rtiSetPeriod(rtiREG1, rtiCOMPARE2, 3000);       //Set Period to 3 Seconds
-    rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
     gioSetBit(hetPORT2, RTDS, 1);
+    rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
 
     //Blink dash LEDs
-    //I'll do this later - LOOK INTO RIT COMPARE TICKS
-
+    //This happens on the RTI interrupt
 }
 
 //brakeCheck
@@ -365,7 +404,6 @@ void adcConversion(unsigned int *adcArray)
 {
     adcData_t adc1Array[4], adc2Array[4];
     unsigned int brake[2], throttle1[2], throttle2[2], angle[2];
-    static unsigned int outputArray[4];
     unsigned int tempValue1, tempValue2;
     int num1, num2, i, diff;
 
@@ -380,6 +418,9 @@ void adcConversion(unsigned int *adcArray)
     //Get ADC Data
     num1 = adcGetData(adcREG1, 1U, adc1Array);
     num2 = adcGetData(adcREG2, 1U, adc2Array);
+
+    if(num1 != num2)
+        fault(3);
 
     for(i = 0; i<num1; i++)
     {
@@ -472,6 +513,7 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
         bseFlag = 0;
         return 0;
     }
+    //NEED A DEFAULT RETURN SIGNAL
 }
 
 //pwmSetup
@@ -480,18 +522,13 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 void pwmSetup()
 {
     pwmSetDuty(hetRAM1, AccelL, 0);
-    pwmSetPeriod(hetRAM1, AccelL, PWM_PERIOD);
 
     pwmSetDuty(hetRAM1, AccelR, 0);
-    pwmSetPeriod(hetRAM1, AccelR, PWM_PERIOD);
 
     pwmSetDuty(hetRAM1, RegenL, 0);
-    pwmSetPeriod(hetRAM1, RegenL, PWM_PERIOD);
 
     pwmSetDuty(hetRAM1, RegenR, 0);
-    pwmSetPeriod(hetRAM1, RegenR, PWM_PERIOD);
 
     pwmSetDuty(hetRAM1, Fans, 0);
-    pwmSetPeriod(hetRAM1, Fans, PWM_PERIOD);
 }
 /* USER CODE END */
