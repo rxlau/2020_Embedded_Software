@@ -77,6 +77,9 @@
 #define BRAKE_APPLIED_CUTOFF 400
 #define PWM_PERIOD 100
 #define BATTERY_TEMP_FAN_TURNON 0xFFF
+
+#define DEADZONE_LOW 1536
+#define DEADZONE_HIGH 2560
 //====================================
 
 //Pin enumerations
@@ -101,8 +104,8 @@
 
 //PWM Channels
 //====================================
-#define AccelL pwm0
-#define AccelR pwm1
+#define ThrottleL pwm0
+#define ThrottleR pwm1
 #define RegenL pwm2
 #define RegenR pwm3
 #define Fans pwm4
@@ -114,10 +117,12 @@
 void adcConversion(unsigned int *adcArray);
 int APPSFault(int);
 int brakeCheck();
-int BSEFault(unsigned int, unsigned int, unsigned int);
+int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake);
 void fault(int caller);
+void motorOutput(unsigned int *outputArray);
 void pwmSetup();
 void startup();
+void TVA(unsigned int *outputArray, unsigned int *adcArray);
 //====================================
 
 //Global Variables ;-;
@@ -217,6 +222,11 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
     {
         unsigned int adcArray[4];
+        unsigned int outputArray[4];
+        //Output array format
+        //  [0]-ThrottleL  [1]-ThrottleR
+        //  [2]-RegenL     [3]-RegenR
+
         //Get ADC Data
         adcConversion(adcArray);
 
@@ -228,20 +238,29 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         if(APPSFault(adcDiff) || BSEFault(adcArray[0],adcArray[1],adcArray[2]))
         {
             //Set motor output = 0
-            pwmSetDuty(hetRAM1,pwm0,0);
-            pwmSetDuty(hetRAM1,pwm1,0);
+            outputArray[0] = 0;
+            outputArray[1] = 0;
+
+            //Should we also zero Regen?
+            outputArray[2] = 0;
+            outputArray[3] = 0;
+            //Do we want to set throttle/output values in an array and then output once?
         }
         else
         {
 
             //Get CAN Bus Data
             //What data do we want/need right now? all of it?
+                //Grab what we need for TVA, then grab and forward all of it later
 
             //Run Torque or Regen Vectoring Algorithm
-
-            //Output to Motors (update PWM).
+            TVA(outputArray, adcArray);
 
         }
+
+        //Output to motors
+        motorOutput(outputArray);
+
         //Misc output functions (brake light)
         if(adcArray[2] > BRAKE_APPLIED_CUTOFF)
             gioSetBit(hetPORT2, BrakeLight, 1);
@@ -514,6 +533,7 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
         return 0;
     }
     //NEED A DEFAULT RETURN SIGNAL
+    return;
 }
 
 //pwmSetup
@@ -521,14 +541,76 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 //Only exists for the sake of making code look cleaner
 void pwmSetup()
 {
-    pwmSetDuty(hetRAM1, AccelL, 0);
+    pwmSetDuty(hetRAM1, ThrottleL, 0);
 
-    pwmSetDuty(hetRAM1, AccelR, 0);
+    pwmSetDuty(hetRAM1, ThrottleR, 0);
 
     pwmSetDuty(hetRAM1, RegenL, 0);
 
     pwmSetDuty(hetRAM1, RegenR, 0);
 
     pwmSetDuty(hetRAM1, Fans, 0);
+}
+
+
+
+//Motor Output
+//Handles setting PWM values for motor output
+void motorOutput(unsigned int *outputArray)
+{
+    pwmSetDuty(hetRAM1, ThrottleL, outputArray[0]);
+    pwmSetDuty(hetRAM1, ThrottleR, outputArray[1]);
+    pwmSetDuty(hetRAM1, RegenL, outputArray[2]);
+    pwmSetDuty(hetRAM1, RegenR, outputArray[3]);
+}
+//TVA
+//Output array format
+//  [0]-ThrottleL  [1]-ThrottleR
+//  [2]-RegenL     [3]-RegenR
+void TVA(unsigned int *outputArray, unsigned int *adcArray)
+{
+    //Unpack and process input array
+    unsigned int Angle = adcArray[3];
+    unsigned int TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    float lFactor, rFactor, m;
+
+    //Do some math
+    m = (0.6/DEADZONE_LOW);     //Factor used in TVA
+    TReq = (TReq/4096) * 100;   //Throttle request as a percentage, represented 0-100
+
+    //Run the Torque Vectoring Algorithm
+    if(Angle <= DEADZONE_HIGH && Angle >= DEADZONE_LOW) //If Angle is within the deadzone
+    {
+        lFactor = 1;
+        rFactor = 1;
+
+    }
+    else if(Angle < DEADZONE_LOW || Angle > DEADZONE_HIGH)//If Angle is outside of deadzone
+    {
+        if(Angle < DEADZONE_LOW)    //Turning Left
+        {
+            lFactor = (m * Angle) + 0.4;
+        }
+        else
+        {
+            lFactor = 1;
+        }
+
+        if(Angle > DEADZONE_HIGH)   //Turning Right
+        {
+            rFactor = ((-m) * Angle) + (0.4 - (4096 * -m));
+        }
+        else
+        {
+            rFactor = 1;
+        }
+
+    }
+    //Populate output array
+    outputArray[0] = TReq * lFactor;    //ThrottleL
+    outputArray[1] = TReq * rFactor;    //ThrottleR
+    outputArray[2] = 0;
+    outputArray[3] = 0;
+
 }
 /* USER CODE END */
