@@ -1,7 +1,7 @@
 /** @file HL_reg_l2ramw.h
 *   @brief L2RAMW Register Layer Header File
-*   @date 11-Dec-2018
-*   @version 04.07.01
+*   @date 08-Feb-2017
+*   @version 04.06.01
 *   
 *   This file contains:
 *   - Definitions
@@ -11,7 +11,7 @@
 */
 
 /* 
-* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 

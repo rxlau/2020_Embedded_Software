@@ -1,7 +1,7 @@
 /** @file HL_system.c
 *   @brief System Driver Source File
-*   @date 11-Dec-2018
-*   @version 04.07.01
+*   @date 08-Feb-2017
+*   @version 04.06.01
 *
 *   This file contains:
 *   - API Functions
@@ -10,7 +10,7 @@
 */
 
 /*
-* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com
+* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com
 *
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,6 @@
 #include "HL_system.h"
 #include "HL_reg_pcr.h"
 #include "HL_pinmux.h"
-
 
 
 /* USER CODE BEGIN (1) */
@@ -141,50 +140,36 @@ void setupPLL(void)
                       | 0x00000004U;
 }
 
-/** @fn void trimLPO(void)
-*   @brief Initialize LPO trim values
-*
-*   Load TRIM values from OTP if present else call customTrimLPO() function 
-*
-*/
 /* SourceId : SYSTEM_SourceId_002 */
 /* DesignId : SYSTEM_DesignId_002 */
 /* Requirements : HL_CONQ_SYSTEM_SR6 */
 void trimLPO(void)
 {
-    uint32 u32clocktestConfig;
-    /* Save user clocktest register configuration */
-    u32clocktestConfig = systemREG1->CLKTEST;
+
 /* USER CODE BEGIN (4) */
 /* USER CODE END */
-    /*The TRM states OTP TRIM value should be stepped to avoid large changes in the HF LPO clock that would result in a LPOCLKMON fault. At issue is the TRM does not specify what the maximum step is so there is no metric to use for the SW implementation - the routine can temporarily disable the LPOCLKMON range check so the sudden change will not cause a fault.*/
-    /* Disable clock range detection*/
-	
-    systemREG1->CLKTEST = (systemREG1->CLKTEST 
-                        | (uint32)((uint32)0x1U << 24U))
-                        & (uint32)(~((uint32)0x1U << 25U));   
+
+    /** @b Initialize Lpo: */
+    /** Load TRIM values from OTP if present else load user defined values */
     /*SAFETYMCUSW 139 S MR:13.7 <APPROVED> "Hardware status bit read check" */
     if(LPO_TRIM_VALUE != 0xFFFFU)
     {
 
         systemREG1->LPOMONCTL  = (uint32)((uint32)1U << 24U)
-                               | (uint32)((uint32)LPO_TRIM_VALUE);
+                                | LPO_TRIM_VALUE;
     }
     else
     {
-    
-        customTrimLPO();
-        
+
+        systemREG1->LPOMONCTL   =  (uint32)((uint32)1U << 24U)
+                                 | (uint32)((uint32)16U << 8U)
+                                 | 16U;
     }
-    
-    /* Restore the user clocktest register value configuration */
-    systemREG1->CLKTEST = u32clocktestConfig;
 
 /* USER CODE BEGIN (5) */
 /* USER CODE END */
 
 }
-
 
 /* SourceId : SYSTEM_SourceId_003 */
 /* DesignId : SYSTEM_DesignId_003 */
@@ -459,72 +444,71 @@ void systemPowerDown(uint32 mode)
 /* SourceId : SYSTEM_SourceId_008 */
 /* DesignId : SYSTEM_DesignId_008 */
 /* Requirements : HL_CONQ_SYSTEM_SR9 */
-resetSource_t getResetSource(void) 
-{ 
-    register resetSource_t rst_source; 
-        
+resetSource_t getResetSource(void)
+{
+    register resetSource_t rst_source;
+
     if ((SYS_EXCEPTION & (uint32)POWERON_RESET) != 0U)
-    { 
+    {
         /* power-on reset condition */
         rst_source = POWERON_RESET;
-        /* Clear all exception status Flag and proceed since it's power up */ 
-        SYS_EXCEPTION = 0x0000FFFFU;        
-    }
 
-    else if ((SYS_EXCEPTION & (uint32)EXT_RESET) != 0U) 
-    {      
-        SYS_EXCEPTION = (uint32)EXT_RESET; 
-        /*** Check for other causes of EXT_RESET that would take precedence **/
-        if ((SYS_EXCEPTION & (uint32)OSC_FAILURE_RESET) != 0U)
-        { 
-            /* Reset caused due to oscillator failure. Add user code here to handle oscillator failure */ 
-            rst_source = OSC_FAILURE_RESET; 
-            SYS_EXCEPTION = (uint32)OSC_FAILURE_RESET; 
-        }
-        else if ((SYS_EXCEPTION & (uint32)WATCHDOG_RESET) !=0U)
-        { 
-            /* Reset caused due watchdog violation */ 
-            rst_source = WATCHDOG_RESET; 
-            SYS_EXCEPTION = (uint32)WATCHDOG_RESET; 
-        }
-        else if ((SYS_EXCEPTION & (uint32)WATCHDOG2_RESET) !=0U)
-        { 
-            /* Reset caused due watchdog violation */ 
-            rst_source = WATCHDOG2_RESET; 
-            SYS_EXCEPTION = (uint32)WATCHDOG2_RESET; 
-        }
-        else if ((SYS_EXCEPTION & (uint32)SW_RESET) != 0U)
-        { 
-            /* Reset caused due to software reset. */ 
-            rst_source = SW_RESET; 
-            SYS_EXCEPTION = (uint32)SW_RESET; 
-        }
-		else
-		{
-			/* Reset caused due to External reset. */ 
-            rst_source = EXT_RESET; 
-		}
-    } 
+        /* Clear all exception status Flag and proceed since it's power up */
+        SYS_EXCEPTION = 0x0000FFFFU;
+    }
+    else if ((SYS_EXCEPTION & (uint32)EXT_RESET) != 0U)
+    {
+        /* Reset caused due to External reset. */
+        rst_source = EXT_RESET;
+        SYS_EXCEPTION = (uint32)EXT_RESET;
+    }
     else if ((SYS_EXCEPTION & (uint32)DEBUG_RESET) !=0U)
-    { 
-        /* Reset caused due Debug reset request */ 
-        rst_source = DEBUG_RESET; 
-        SYS_EXCEPTION = (uint32)DEBUG_RESET; 
+    {
+        /* Reset caused due Debug reset request */
+        rst_source = DEBUG_RESET;
+        SYS_EXCEPTION = (uint32)DEBUG_RESET;
+    }
+    else if ((SYS_EXCEPTION & (uint32)OSC_FAILURE_RESET) != 0U)
+    {
+     /* Reset caused due to oscillator failure.
+        Add user code here to handle oscillator failure */
+        rst_source = OSC_FAILURE_RESET;
+        SYS_EXCEPTION = (uint32)OSC_FAILURE_RESET;
+    }
+    else if ((SYS_EXCEPTION & (uint32)WATCHDOG_RESET) !=0U)
+    {
+        /* Reset caused due watchdog violation */
+        rst_source = WATCHDOG_RESET;
+        SYS_EXCEPTION = (uint32)WATCHDOG_RESET;
+    }
+    else if ((SYS_EXCEPTION & (uint32)WATCHDOG2_RESET) !=0U)
+    {
+        /* Reset caused due watchdog violation */
+        rst_source = WATCHDOG2_RESET;
+        SYS_EXCEPTION = (uint32)WATCHDOG2_RESET;
     }
     else if ((SYS_EXCEPTION & (uint32)CPU0_RESET) !=0U)
-    {     
-        /* Reset caused due to CPU0 reset. CPU reset can be caused by CPU self-test completion, or by toggling the "CPU RESET" bit of the CPU Reset Control Register. */ 
-        rst_source = CPU0_RESET; 
-        SYS_EXCEPTION = (uint32)CPU0_RESET; 
+    {
+        /* Reset caused due to CPU0 reset.
+        CPU reset can be caused by CPU self-test completion, or
+        by toggling the "CPU RESET" bit of the CPU Reset Control Register. */
+        rst_source = CPU0_RESET;
+        SYS_EXCEPTION = (uint32)CPU0_RESET;
+    }
+    else if ((SYS_EXCEPTION & (uint32)SW_RESET) != 0U)
+    {
+        /* Reset caused due to software reset. */
+        rst_source = SW_RESET;
+        SYS_EXCEPTION = (uint32)SW_RESET;
     }
     else
     {
-        /* No_reset occured. */ 
-        rst_source = NO_RESET; 
+        /* No_reset occured. */
+        rst_source = NO_RESET;
     }
-    return rst_source; 
-}
 
+    return rst_source;
+}
 
 /* USER CODE BEGIN (26) */
 /* USER CODE END */
@@ -631,26 +615,4 @@ void systemGetConfigValue(system_config_reg_t *config_reg, config_value_type_t t
         config_reg->CONFIG_CLKSLIP     = systemREG2->CLKSLIP;
         config_reg->CONFIG_EFC_CTLEN   = systemREG2->EFC_CTLEN;
     }
-}
-
-/** @fn customTrimLPO(void)
-*   @brief custom function to initilize LPO trim values
-*
-*   This function initializes default LPO trim values if OTP value is 0XFFFF,
-*   user can also write their own code to handle this case .
-*
-*/
-void customTrimLPO(void)
-{
-    /* User can write logic to handle the case where LPO trim is set to 0xFFFFu */
-/* USER CODE BEGIN (27) */
-/* USER CODE END */
-    
-    /* Load default trimLPO value */
-     systemREG1->LPOMONCTL   = (uint32)((uint32)1U << 24U)
-                             | (uint32)((uint32)16U << 8U)
-                             | (uint32)((uint32)16U);
-                                
-/* USER CODE BEGIN (28) */
-/* USER CODE END */
 }

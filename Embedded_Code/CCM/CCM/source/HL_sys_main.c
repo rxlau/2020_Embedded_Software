@@ -1,14 +1,14 @@
 /** @file HL_sys_main.c 
 *   @brief Application main file
-*   @date 11-Dec-2018
-*   @version 04.07.01
+*   @date 08-Feb-2017
+*   @version 04.06.01
 *
 *   This file contains an empty main function,
 *   which can be used for the application.
 */
 
 /* 
-* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -123,6 +123,9 @@ void motorOutput(unsigned int *outputArray);
 void pwmSetup();
 void startup();
 void TVA(unsigned int *outputArray, unsigned int *adcArray);
+void getAllCANData(uint8_t *canData);
+void sendAllDataOBD(uint8_t *canData);
+uint32_t checkPackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize);
 //====================================
 
 //Global Variables ;-;
@@ -169,7 +172,7 @@ int main(void)
         //After a set time delay we need to set time delay pin to high
         //Leave time delay pin unused after
         //Need to initially have start button disabled
-        //Wait for time to pass and call ritnotification compare2 using rticounter 1
+        //Wait for time to pass and call rtinotification compare2 using rticounter 1
     gioDisableNotification(gioPORTA, StartButton);  //Make sure start button is disabled
     rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
 
@@ -248,14 +251,8 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         }
         else
         {
-
-            //Get CAN Bus Data
-            //What data do we want/need right now? all of it?
-                //Grab what we need for TVA, then grab and forward all of it later
-
             //Run Torque or Regen Vectoring Algorithm
             TVA(outputArray, adcArray);
-
         }
 
         //Output to motors
@@ -267,15 +264,27 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         else
             gioSetBit(hetPORT2, BrakeLight, 0);
 
-        //Output to CAN bus/OBD2
+        //Input from CAN and output to OBD2
+        //TODO: Calculate % values for throttle,brake,and steering
+        uint8_t throttlePercent = 0x00;
+        uint8_t brakePercent = 0x00;
+        uint8_t steeringPercent = 0x00;
 
+        uint8_t canData[91];
+        //Populate canData buffer with all data from CANBus and throttle,brake,and steering % values
+        getAllCANData(canData);
+        canData[0] = throttlePercent;
+        canData[1] = brakePercent;
+        canData[2] = steeringPercent;
+
+        sendAllDataOBD(canData);
 
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
         //TODO: maybe move these variable elsewhere
-        static uint8 bms1_temp[6];
-        static uint8 bms2_temp[6];
+        static uint8_t bms1_temp[6];
+        static uint8_t bms2_temp[6];
         unsigned int internalTemp1;
         unsigned int internalTemp2;
 //        unsigned int ext1Temp1;
@@ -284,8 +293,8 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 //        unsigned int ext2Temp2;
 
         //Get data from CAN Bus
-        canGetData(canREG1,0x00,bms1_temp);
-        canGetData(canREG1,0x01,bms2_temp);
+        canGetData(canREG1,canMESSAGE_BOX1,bms1_temp);
+        canGetData(canREG1,canMESSAGE_BOX2,bms2_temp);
 
         //TODO: Internal temp may not be desired data for this calculation
         //Evaluate data and figure out new output
@@ -366,10 +375,10 @@ void fault(int caller)
         rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK0);
 
     //Zero Throttle and Regen Requests
-    pwmSetDuty(hetRAM1,pwm0,0);
-    pwmSetDuty(hetRAM1,pwm1,0);
-    pwmSetDuty(hetRAM1,pwm2,0);
-    pwmSetDuty(hetRAM1,pwm4,0);
+    pwmSetDuty(hetRAM1,ThrottleL,0);
+    pwmSetDuty(hetRAM1,ThrottleR,0);
+    pwmSetDuty(hetRAM1,RegenL,0);
+    pwmSetDuty(hetRAM1,RegenR,0);
 
     //Set nonessential outputs based caller (DASH LEDs)
     if(caller == 0)
@@ -515,7 +524,10 @@ int APPSFault(int adcDiff)
         return 0;
 }
 
-//TODO: can be done without global variable?
+//BSEFault
+//Used for checking if throttle and brake are pressed at the same time (indicating a short circuit)
+//Return 1 if throttle is > 25% and brake is pressed, until brake is released and throttle is < 5%
+//Return 0 if no fault
 int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 {
     if((bseFlag) && (accel1 > 205 || accel2 > 205))//205 is 5% of 4096
@@ -583,7 +595,6 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
     {
         lFactor = 1;
         rFactor = 1;
-
     }
     else if(Angle < DEADZONE_LOW || Angle > DEADZONE_HIGH)//If Angle is outside of deadzone
     {
@@ -612,5 +623,80 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
     outputArray[2] = 0;
     outputArray[3] = 0;
 
+}
+
+void getAllCANData(uint8_t *canData){
+    canGetData(canREG1, canMESSAGE_BOX1,canData+3);
+    canGetData(canREG1, canMESSAGE_BOX2,canData+9);
+    canGetData(canREG1, canMESSAGE_BOX3,canData+15);
+    canGetData(canREG1, canMESSAGE_BOX4,canData+18);
+    canGetData(canREG1, canMESSAGE_BOX5,canData+21);
+    canGetData(canREG1, canMESSAGE_BOX6,canData+24);
+    canGetData(canREG1, canMESSAGE_BOX7,canData+27);
+    canGetData(canREG1, canMESSAGE_BOX8,canData+33);
+    canGetData(canREG1, canMESSAGE_BOX9,canData+39);
+    canGetData(canREG1, canMESSAGE_BOX10,canData+45);
+    canGetData(canREG1, canMESSAGE_BOX11,canData+51);
+    canGetData(canREG1, canMESSAGE_BOX12,canData+57);
+    canGetData(canREG1, canMESSAGE_BOX13,canData+63);
+    canGetData(canREG1, canMESSAGE_BOX14,canData+69);
+    canGetData(canREG1, canMESSAGE_BOX15,canData+75);
+    canGetData(canREG1, canMESSAGE_BOX16,canData+79);
+    canGetData(canREG1, canMESSAGE_BOX17,canData+83);
+    canGetData(canREG1, canMESSAGE_BOX18,canData+87);
+}
+
+void sendAllDataOBD(uint8_t *Data){
+    canTransmit(canREG2, canMESSAGE_BOX1,Data);
+    canTransmit(canREG2, canMESSAGE_BOX2,Data+3);
+    canTransmit(canREG2, canMESSAGE_BOX3,Data+9);
+    canTransmit(canREG2, canMESSAGE_BOX4,Data+15);
+    canTransmit(canREG2, canMESSAGE_BOX5,Data+18);
+    canTransmit(canREG2, canMESSAGE_BOX6,Data+21);
+    canTransmit(canREG2, canMESSAGE_BOX7,Data+24);
+    canTransmit(canREG2, canMESSAGE_BOX8,Data+27);
+    canTransmit(canREG2, canMESSAGE_BOX9,Data+33);
+    canTransmit(canREG2, canMESSAGE_BOX10,Data+39);
+    canTransmit(canREG2, canMESSAGE_BOX11,Data+45);
+    canTransmit(canREG2, canMESSAGE_BOX12,Data+51);
+    canTransmit(canREG2, canMESSAGE_BOX13,Data+57);
+    canTransmit(canREG2, canMESSAGE_BOX14,Data+63);
+    canTransmit(canREG2, canMESSAGE_BOX15,Data+69);
+    canTransmit(canREG2, canMESSAGE_BOX16,Data+75);
+    canTransmit(canREG2, canMESSAGE_BOX17,Data+79);
+    canTransmit(canREG2, canMESSAGE_BOX18,Data+83);
+    canTransmit(canREG2, canMESSAGE_BOX19,Data+87);
+}
+
+//Function to verify that packets sent and received are intended values
+uint32_t checkPackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize){
+    uint32_t err=0;
+    uint32_t cnt=psize;
+
+    while(cnt--){
+        if((*src_packet++) != (*dst_packet++)){
+            err++;
+        }
+    }
+    return(err);
+}
+
+//All functions below need to be declared for CAN to function, but
+//are only used when using interrupts with CAN
+void canMessageNotification(canBASE_t *node, uint32_t messageBox){
+    return;
+}
+
+void canErrorNotification(canBASE_t *node, uint32_t messageBox){
+    return;
+}
+
+void esmGroup1Notification(unsigned channel){
+    return;
+}
+
+void esmGroup2Notification(unsigned channel)
+{
+    return;
 }
 /* USER CODE END */
