@@ -265,12 +265,15 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
             gioSetBit(hetPORT2, BrakeLight, 0);
 
         //Input from CAN and output to OBD2
-        //TODO: Calculate % values for throttle,brake,and steering
-        uint8_t throttlePercent = 0x00;
-        uint8_t brakePercent = 0x00;
-        uint8_t steeringPercent = 0x00;
+        //Converts data to percentages
+        uint8_t throttleLPercent = outputArray[0];
+        uint8_t throttleRPercent = outputArray[1];
+        uint8_t regenLPercent = outputArray[2];
+        uint8_t regenLPercent = outputArray[3];
+        uint8_t brakePercent = adcArray[2]/4096;
+        uint8_t steeringPercent = adcArray[3]/4096;
 
-        uint8_t canData[91];
+        uint8_t canData[94];
         //Populate canData buffer with all data from CANBus and throttle,brake,and steering % values
         getAllCANData(canData);
         canData[0] = throttlePercent;
@@ -626,46 +629,46 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
 }
 
 void getAllCANData(uint8_t *canData){
-    canGetData(canREG1, canMESSAGE_BOX1,canData+3);
-    canGetData(canREG1, canMESSAGE_BOX2,canData+9);
-    canGetData(canREG1, canMESSAGE_BOX3,canData+15);
-    canGetData(canREG1, canMESSAGE_BOX4,canData+18);
-    canGetData(canREG1, canMESSAGE_BOX5,canData+21);
-    canGetData(canREG1, canMESSAGE_BOX6,canData+24);
-    canGetData(canREG1, canMESSAGE_BOX7,canData+27);
-    canGetData(canREG1, canMESSAGE_BOX8,canData+33);
-    canGetData(canREG1, canMESSAGE_BOX9,canData+39);
-    canGetData(canREG1, canMESSAGE_BOX10,canData+45);
-    canGetData(canREG1, canMESSAGE_BOX11,canData+51);
-    canGetData(canREG1, canMESSAGE_BOX12,canData+57);
-    canGetData(canREG1, canMESSAGE_BOX13,canData+63);
-    canGetData(canREG1, canMESSAGE_BOX14,canData+69);
-    canGetData(canREG1, canMESSAGE_BOX15,canData+75);
-    canGetData(canREG1, canMESSAGE_BOX16,canData+79);
-    canGetData(canREG1, canMESSAGE_BOX17,canData+83);
-    canGetData(canREG1, canMESSAGE_BOX18,canData+87);
+    canGetData(canREG1, canMESSAGE_BOX1,canData+6);
+    canGetData(canREG1, canMESSAGE_BOX2,canData+12);
+    canGetData(canREG1, canMESSAGE_BOX3,canData+18);
+    canGetData(canREG1, canMESSAGE_BOX4,canData+21);
+    canGetData(canREG1, canMESSAGE_BOX5,canData+24);
+    canGetData(canREG1, canMESSAGE_BOX6,canData+27);
+    canGetData(canREG1, canMESSAGE_BOX7,canData+30);
+    canGetData(canREG1, canMESSAGE_BOX8,canData+36);
+    canGetData(canREG1, canMESSAGE_BOX9,canData+42);
+    canGetData(canREG1, canMESSAGE_BOX10,canData+48);
+    canGetData(canREG1, canMESSAGE_BOX11,canData+54);
+    canGetData(canREG1, canMESSAGE_BOX12,canData+60);
+    canGetData(canREG1, canMESSAGE_BOX13,canData+66);
+    canGetData(canREG1, canMESSAGE_BOX14,canData+72);
+    canGetData(canREG1, canMESSAGE_BOX15,canData+78);
+    canGetData(canREG1, canMESSAGE_BOX16,canData+82);
+    canGetData(canREG1, canMESSAGE_BOX17,canData+86);
+    canGetData(canREG1, canMESSAGE_BOX18,canData+90);
 }
 
 void sendAllDataOBD(uint8_t *Data){
     canTransmit(canREG2, canMESSAGE_BOX1,Data);
-    canTransmit(canREG2, canMESSAGE_BOX2,Data+3);
-    canTransmit(canREG2, canMESSAGE_BOX3,Data+9);
-    canTransmit(canREG2, canMESSAGE_BOX4,Data+15);
-    canTransmit(canREG2, canMESSAGE_BOX5,Data+18);
-    canTransmit(canREG2, canMESSAGE_BOX6,Data+21);
-    canTransmit(canREG2, canMESSAGE_BOX7,Data+24);
-    canTransmit(canREG2, canMESSAGE_BOX8,Data+27);
-    canTransmit(canREG2, canMESSAGE_BOX9,Data+33);
-    canTransmit(canREG2, canMESSAGE_BOX10,Data+39);
-    canTransmit(canREG2, canMESSAGE_BOX11,Data+45);
-    canTransmit(canREG2, canMESSAGE_BOX12,Data+51);
-    canTransmit(canREG2, canMESSAGE_BOX13,Data+57);
-    canTransmit(canREG2, canMESSAGE_BOX14,Data+63);
-    canTransmit(canREG2, canMESSAGE_BOX15,Data+69);
-    canTransmit(canREG2, canMESSAGE_BOX16,Data+75);
-    canTransmit(canREG2, canMESSAGE_BOX17,Data+79);
-    canTransmit(canREG2, canMESSAGE_BOX18,Data+83);
-    canTransmit(canREG2, canMESSAGE_BOX19,Data+87);
+    canTransmit(canREG2, canMESSAGE_BOX2,Data+6);
+    canTransmit(canREG2, canMESSAGE_BOX3,Data+12);
+    canTransmit(canREG2, canMESSAGE_BOX4,Data+18);
+    canTransmit(canREG2, canMESSAGE_BOX5,Data+21);
+    canTransmit(canREG2, canMESSAGE_BOX6,Data+24);
+    canTransmit(canREG2, canMESSAGE_BOX7,Data+27);
+    canTransmit(canREG2, canMESSAGE_BOX8,Data+30);
+    canTransmit(canREG2, canMESSAGE_BOX9,Data+36);
+    canTransmit(canREG2, canMESSAGE_BOX10,Data+42);
+    canTransmit(canREG2, canMESSAGE_BOX11,Data+48);
+    canTransmit(canREG2, canMESSAGE_BOX12,Data+54);
+    canTransmit(canREG2, canMESSAGE_BOX13,Data+60);
+    canTransmit(canREG2, canMESSAGE_BOX14,Data+66);
+    canTransmit(canREG2, canMESSAGE_BOX15,Data+72);
+    canTransmit(canREG2, canMESSAGE_BOX16,Data+78);
+    canTransmit(canREG2, canMESSAGE_BOX17,Data+82);
+    canTransmit(canREG2, canMESSAGE_BOX18,Data+86);
+    canTransmit(canREG2, canMESSAGE_BOX19,Data+90);
 }
 
 //Function to verify that packets sent and received are intended values
