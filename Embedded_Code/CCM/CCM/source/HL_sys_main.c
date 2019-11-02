@@ -269,14 +269,14 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         uint8_t throttleLPercent = outputArray[0];
         uint8_t throttleRPercent = outputArray[1];
         uint8_t regenLPercent = outputArray[2];
-        uint8_t regenLPercent = outputArray[3];
+        uint8_t regenRPercent = outputArray[3];
         uint8_t brakePercent = adcArray[2]/4096;
         uint8_t steeringPercent = adcArray[3]/4096;
 
         uint8_t canData[94];
         //Populate canData buffer with all data from CANBus and throttle,brake,and steering % values
         getAllCANData(canData);
-        canData[0] = throttlePercent;
+        canData[0] = (((adcArray [0] + adcArray[1])/2) * 100);
         canData[1] = brakePercent;
         canData[2] = steeringPercent;
 
@@ -586,7 +586,7 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
 {
     //Unpack and process input array
     unsigned int Angle = adcArray[3];
-    unsigned int TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
     float lFactor, rFactor, m;
 
     //Do some math
