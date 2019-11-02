@@ -11,10 +11,10 @@
 //Functions:
 void I2C_init();
 void getI2CData();
-uint16_t convert_16bit(uint8_t high, uint8_t low);
-uint16_t accel_conversion(uint16_t rawaccel);
-uint16_t gyro_conversion(uint16_t rawgyro);
-void printData(uint16_t accelx, uint16_t accely, uint16_t accelz, uint16_t gyrox, uint16_t gyroy, uint16_t gryox);
+int16_t convert_16bit(int8_t high, int8_t low);
+int16_t accel_conversion(int16_t rawaccel);
+int16_t gyro_conversion(int16_t rawgyro);
+void printData(int16_t accelx, int16_t accely, int16_t accelz, int16_t gyrox, int16_t gyroy, int16_t gryox);
 
 void getTemp();
 
@@ -138,9 +138,9 @@ void I2C_init()
 void getI2CData() //possible specify what data we want later instead of just including everything?
 {
 
-  uint16_t rawaccelx, rawaccely, rawaccelz, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
-  uint16_t convaccelx, convaccely, convaccelz, convaccelz, convgyrox, convgyroy, convgyroz;
-  uint8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
+  int16_t rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
+  int16_t convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz;
+  int8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
 
   Wire.beginTransmission(lsm9ds1_ag);
   
@@ -202,14 +202,14 @@ void getI2CData() //possible specify what data we want later instead of just inc
 }
 
 //converts to 16 bit number
-uint16_t convert_16bit(uint8_t high, uint8_t low)
+int16_t convert_16bit(int8_t high, int8_t low)
 {
-	uint16_t sixteenbit = (high << 8) | low; 
+	int16_t sixteenbit = (high << 8) | low; 
 	return sixteenbit;
 }
 
 //converts the 16 bit int into human understandable data
-uint16_t accel_conversion(uint16_t rawaccel)
+int16_t accel_conversion(int16_t rawaccel)
 {
 	//raw unit is millig's/LSB (mg/LSB)
 	//default sampling is +-2g, list of conversion factors on page 12 of datasheet
@@ -219,7 +219,7 @@ uint16_t accel_conversion(uint16_t rawaccel)
 	
 }
 
-uint16_t gyro_conversion(uint16_t rawgyro)
+int16_t gyro_conversion(int16_t rawgyro)
 {
 	//raw unit is millidps/LSB (mdps/LSB)
 	//default sampling is +-245dps, list of conversion factors on page 12 of datasheet
@@ -229,7 +229,7 @@ uint16_t gyro_conversion(uint16_t rawgyro)
 	
 }
 
-void printData(uint16_t accelx, uint16_t accely, uint16_t accelz, uint16_t gyrox, uint16_t gyroy, uint16_t gryox)
+void printData(int16_t accelx, int16_t accely, int16_t accelz, int16_t gyrox, int16_t gyroy, int16_t gyroz)
 {
 
   Serial.print("Gyro X = ");
@@ -240,11 +240,11 @@ void printData(uint16_t accelx, uint16_t accely, uint16_t accelz, uint16_t gyrox
   Serial.println(gyroz, 3); //prints 3 decimal places
 
   Serial.print("Accel X = ");
-  Serial.println(aceelx, 3); //prints 3 decimal places
+  Serial.println(accelx, 3); //prints 3 decimal places
   Serial.print("Accel Y = ");
-  Serial.println(aceely, 3); //prints 3 decimal places
+  Serial.println(accely, 3); //prints 3 decimal places
   Serial.print("Accel Z = ");
-  Serial.println(aceelz, 3); //prints 3 decimal places
+  Serial.println(accelz, 3); //prints 3 decimal places
 
 }
 
