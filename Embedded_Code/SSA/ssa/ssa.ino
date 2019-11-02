@@ -9,15 +9,20 @@
 #include "Wire.h"
 
 //Functions:
-void getI2CData();
 void I2C_init();
+void getI2CData();
+uint16_t convert_16bit(uint8_t high, uint8_t low);
+uint16_t accel_conversion(uint16_t rawaccel);
+uint16_t gyro_conversion(uint16_t rawgyro);
+void printData(uint16_t accelx, uint16_t accely, uint16_t accelz, uint16_t gyrox, uint16_t gyroy, uint16_t gryox);
+
 void getTemp();
 
 //pin declerations
 
-int sda = P2_2;
+int sda = P2_2; //I2C pins
 int scl = P2_1;
-int irpin1 = A0; //3 analog ir sensors
+int irpin1 = A0; //3 analog IR sensors
 int irpin2 = A1;
 int irpin3 = A2;
 int sustrv = A3; //analog input for suspension travel, not implemented yet
@@ -30,8 +35,6 @@ int irread3;
 int hallread;
 float voltage1, voltage2, voltage3;
 float temp1, temp2, temp3;
-uint8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
-//int readbytes = 2;
 
 //registers
 
@@ -126,7 +129,7 @@ void I2C_init()
   Wire.write(accel_control4);
   Wire.write(56); //Makes sure accel output is turned on
   Wire.write(accel_control5);
-  Wire.write(56); //not working
+  Wire.write(56); 
 	
   //Wire.write(mag_pwr); //Mag mode
   Wire.endTransmission();
@@ -134,6 +137,10 @@ void I2C_init()
 
 void getI2CData() //possible specify what data we want later instead of just including everything?
 {
+
+  uint16_t rawaccelx, rawaccely, rawaccelz, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
+  uint16_t convaccelx, convaccely, convaccelz, convaccelz, convgyrox, convgyroy, convgyroz;
+  uint8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
 
   Wire.beginTransmission(lsm9ds1_ag);
   
@@ -175,36 +182,70 @@ void getI2CData() //possible specify what data we want later instead of just inc
 
   Wire.endTransmission();
 
-  //if((gX0 != 255) && (gX1 != 255) && (gY0 != 255) && (gY1 != 255) && (gZ0 != 255) && (gZ1 != 255) && (aX0 != 255) && (aX1 != 255) && (aY0 != 255) && (aY1 != 255) && (aZ0 != 255) && (aZ1 != 255))
-  //{
-  Serial.print("Gyro X0= ");
-  Serial.println(gX0);
-  Serial.print("Gyro X1= ");
-  Serial.println(gX1);
-  Serial.print("Gyro Y0= ");
-  Serial.println(gY0);
-  Serial.print("Gyro Y1= ");
-  Serial.println(gY1);
-  Serial.print("Gyro Z0= ");
-  Serial.println(gZ0);
-  Serial.print("Gyro Z1= ");
-  Serial.println(gZ1);
-  
-  Serial.print("Accel X0= ");
-  Serial.println(aX0);
-  Serial.print("Accel X1= ");
-  Serial.println(aX1);
-  Serial.print("Accel Y0= ");
-  Serial.println(aY0);
-  Serial.print("Accel Y1= ");
-  Serial.println(aY1);
-  Serial.print("Accel Z0= ");
-  Serial.println(aZ0);
-  Serial.print("Accel Z1= ");
-  Serial.println(aZ1);
-  //}
+  rawgyrox = convert_16bit(gX0, gX1);
+  rawgyroy = convert_16bit(gY0, gY1);
+  rawgyroz = convert_16bit(gZ0, gZ1);
+ 
+  rawaccelx = convert_16bit(aZ0, aZ1);
+  rawaccely = convert_16bit(aY0, aY1);
+  rawaccelz = convert_16bit(aZ0, aZ1);
 
-  
+  convgyrox = gyro_conversion(rawgyrox);
+  convgyroy = gyro_conversion(rawgyroy);
+  convgyroz = gyro_conversion(rawgyroz);
+
+  convaccelx = accel_conversion(rawaccelx);
+  convaccely = accel_conversion(rawaccely);
+  convaccelz = accel_conversion(rawaccelz);
+
+  printData(convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz);	
+}
+
+//converts to 16 bit number
+uint16_t convert_16bit(uint8_t high, uint8_t low)
+{
+	uint16_t sixteenbit = (high << 8) | low; 
+	return sixteenbit;
+}
+
+//converts the 16 bit int into human understandable data
+uint16_t accel_conversion(uint16_t rawaccel)
+{
+	//raw unit is millig's/LSB (mg/LSB)
+	//default sampling is +-2g, list of conversion factors on page 12 of datasheet
+
+	float conv_factor = .061; //conversion factor for +-2g
+	return (rawaccel * conv_factor) / 1000; //ouputs in standard g's
+	
+}
+
+uint16_t gyro_conversion(uint16_t rawgyro)
+{
+	//raw unit is millidps/LSB (mdps/LSB)
+	//default sampling is +-245dps, list of conversion factors on page 12 of datasheet
+
+	float conv_factor = 8.75; //conversion factor for +-2g
+	return (rawgyro * conv_factor) / 1000; //ouputs in standard dps
+	
+}
+
+void printData(uint16_t accelx, uint16_t accely, uint16_t accelz, uint16_t gyrox, uint16_t gyroy, uint16_t gryox)
+{
+
+  Serial.print("Gyro X = ");
+  Serial.println(gyrox, 3); //prints 3 decimal places
+  Serial.print("Gyro Y = ");
+  Serial.println(gyroy, 3); //prints 3 decimal places
+  Serial.print("Gyro Z = ");
+  Serial.println(gyroz, 3); //prints 3 decimal places
+
+  Serial.print("Accel X = ");
+  Serial.println(aceelx, 3); //prints 3 decimal places
+  Serial.print("Accel Y = ");
+  Serial.println(aceely, 3); //prints 3 decimal places
+  Serial.print("Accel Z = ");
+  Serial.println(aceelz, 3); //prints 3 decimal places
+
 }
 
 float calcTemp(float ADCread)
