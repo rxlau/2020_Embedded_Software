@@ -12,9 +12,9 @@
 void I2C_init();
 void getI2CData();
 int16_t convert_16bit(int8_t high, int8_t low);
-int16_t accel_conversion(int16_t rawaccel);
-int16_t gyro_conversion(int16_t rawgyro);
-void printData(int16_t accelx, int16_t accely, int16_t accelz, int16_t gyrox, int16_t gyroy, int16_t gryox);
+float accel_conversion(int16_t rawaccel);
+float gyro_conversion(int16_t rawgyro);
+void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gryox);
 
 void getTemp();
 
@@ -80,7 +80,7 @@ void loop() {
 
 //Reading IMU
   getI2CData();
-  delay(1000);
+  delay(10);
 
 //Reading IR sensors
 
@@ -139,7 +139,7 @@ void getI2CData() //possible specify what data we want later instead of just inc
 {
 
   int16_t rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
-  int16_t convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz;
+  float convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz;
   int8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
 
   Wire.beginTransmission(lsm9ds1_ag);
@@ -209,7 +209,7 @@ int16_t convert_16bit(int8_t high, int8_t low)
 }
 
 //converts the 16 bit int into human understandable data
-int16_t accel_conversion(int16_t rawaccel)
+float accel_conversion(int16_t rawaccel)
 {
 	//raw unit is millig's/LSB (mg/LSB)
 	//default sampling is +-2g, list of conversion factors on page 12 of datasheet
@@ -219,7 +219,7 @@ int16_t accel_conversion(int16_t rawaccel)
 	
 }
 
-int16_t gyro_conversion(int16_t rawgyro)
+float gyro_conversion(int16_t rawgyro)
 {
 	//raw unit is millidps/LSB (mdps/LSB)
 	//default sampling is +-245dps, list of conversion factors on page 12 of datasheet
@@ -229,22 +229,23 @@ int16_t gyro_conversion(int16_t rawgyro)
 	
 }
 
-void printData(int16_t accelx, int16_t accely, int16_t accelz, int16_t gyrox, int16_t gyroy, int16_t gyroz)
+void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gyroz)
 {
 
-  Serial.print("Gyro X = ");
+  /*Serial.print("Gyro X = ");
   Serial.println(gyrox, 3); //prints 3 decimal places
   Serial.print("Gyro Y = ");
   Serial.println(gyroy, 3); //prints 3 decimal places
   Serial.print("Gyro Z = ");
   Serial.println(gyroz, 3); //prints 3 decimal places
-
+*/
   Serial.print("Accel X = ");
   Serial.println(accelx, 3); //prints 3 decimal places
   Serial.print("Accel Y = ");
   Serial.println(accely, 3); //prints 3 decimal places
   Serial.print("Accel Z = ");
   Serial.println(accelz, 3); //prints 3 decimal places
+  Serial.println("\n\n");
 
 }
 
