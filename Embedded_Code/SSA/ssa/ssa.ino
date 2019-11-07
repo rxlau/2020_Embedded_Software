@@ -80,7 +80,7 @@ void loop() {
 
 //Reading IMU
   getI2CData();
-  delay(10);
+  delay(1000);
 
 //Reading IR sensors
 
@@ -186,7 +186,7 @@ void getI2CData() //possible specify what data we want later instead of just inc
   rawgyroy = convert_16bit(gY0, gY1);
   rawgyroz = convert_16bit(gZ0, gZ1);
  
-  rawaccelx = convert_16bit(aZ0, aZ1);
+  rawaccelx = convert_16bit(aX0, aX1);
   rawaccely = convert_16bit(aY0, aY1);
   rawaccelz = convert_16bit(aZ0, aZ1);
 
