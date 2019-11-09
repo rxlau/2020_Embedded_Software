@@ -76,7 +76,7 @@ void loop()
             ticks = end_timer(); /*This will end the timer and return the number of ticks, each tick is 1 micro second*/
             _speed_ = wheel_speed(ticks); /* will give the speed of this rotation*/
             reading = 1; /* will then exit this loop to reset the timer*/
-            
+            Serial.print(_speed_,DEC);
           }
        
 
