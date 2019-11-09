@@ -270,13 +270,13 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         uint8_t throttleRPercent = outputArray[1];
         uint8_t regenLPercent = outputArray[2];
         uint8_t regenRPercent = outputArray[3];
-        uint8_t brakePercent = adcArray[2]/4096;
-        uint8_t steeringPercent = adcArray[3]/4096;
+        uint8_t brakePercent = (float)((adcArray[2]/4096) * 100);
+        uint8_t steeringPercent = (float)((adcArray[3]/4096) * 100);
 
         uint8_t canData[94];
         //Populate canData buffer with all data from CANBus and throttle,brake,and steering % values
         getAllCANData(canData);
-        canData[0] = throttlePercent;
+        canData[0] = (((adcArray [0] + adcArray[1])/2) * 100);
         canData[1] = brakePercent;
         canData[2] = steeringPercent;
 
@@ -286,8 +286,8 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
         //TODO: maybe move these variable elsewhere
-        static uint8_t bms1_temp[6];
-        static uint8_t bms2_temp[6];
+        uint8_t bms1_temp[6];
+        uint8_t bms2_temp[6];
         unsigned int internalTemp1;
         unsigned int internalTemp2;
 //        unsigned int ext1Temp1;
@@ -302,17 +302,19 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         //TODO: Internal temp may not be desired data for this calculation
         //Evaluate data and figure out new output
         internalTemp1 = bms1_temp[0];
-        internalTemp1 = internalTemp1 << 4;
+        internalTemp1 = internalTemp1 << 8;
         internalTemp1 = internalTemp1 | bms1_temp[1];
 
         internalTemp2 = bms2_temp[0];
-        internalTemp2 = internalTemp2 << 4;
+        internalTemp2 = internalTemp2 << 8;
         internalTemp2 = internalTemp2 | bms2_temp[1];
 
         //Output to PWM
         //TODO: Add "better" algorithm if necessary, and find "turnon value"
         if((internalTemp1 || internalTemp2) > BATTERY_TEMP_FAN_TURNON)
-            pwmSetDuty(hetRAM1,pwm3,100);
+            pwmSetDuty(hetRAM1,Fans,100);
+        else
+            pwmSetDuty(hetRAM1, Fans, 0);
 
 
     }
@@ -586,7 +588,7 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
 {
     //Unpack and process input array
     unsigned int Angle = adcArray[3];
-    unsigned int TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
     float lFactor, rFactor, m;
 
     //Do some math
