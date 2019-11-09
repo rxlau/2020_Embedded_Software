@@ -2,9 +2,15 @@
  * Portion: Wheel Speed 
  * This code is used to calculate wheel speed.
  */
-#include <msp430.h>
+#include "Wire.h"
+#include "msp430.h"
 
-int hall_pin = P2.5;
+int Read_Hall();
+int initiateTimer();
+int end_Timer();
+int wheel_speed();
+int hall_pin = 13;
+
 void setup() 
 {
   /* Hall Sensor Setup*/
@@ -16,18 +22,18 @@ void setup()
 int Read_Hall() 
 {
      /* Reads hall sensor*/
-    int read_pin = digitalRead(hall_pin) 
+    int read_pin = digitalRead(hall_pin);
     return read_pin;
     
 }
 /* Initiates TImer */
 void initiate_Timer() 
 {
-    WDTCL = WDTPW + WDTHOLD; /* stops the dog watch timer */
+    WDTCTL = WDTPW + WDTHOLD; /* stops the dog watch timer */
     TACCR0 = 0; /* stopped the timer */
     TACCTL0 |= CCIE; /* enables the interupt for CCR0 */
-    TACTL = TASSEL_2 + ID_3 + MC_2 /* Picks SMCLK, input divider = 8, Mode: Continuous*/ 
-    DCOCTL = CALDCO_8MHz;/* Set the DOC clock to 8 MHz*/
+    TACTL = TASSEL_2 + ID_3 + MC_2; /* Picks SMCLK, input divider = 8, Mode: Continuous*/ 
+    DCOCTL = CALDCO_8MHZ;/* Set the DOC clock to 8 MHz*/
 }
 int end_timer() 
 {
@@ -52,6 +58,7 @@ int wheel_speed(int half_rot_time)
   wheel_speed = half_rotation/ half_rot_time;
   return wheel_speed; 
   }
+  
 void loop() 
 {
     int hall_read =0;
@@ -61,7 +68,7 @@ void loop()
     int ticks = 0;  
   /* initiate Timer*/
     initiate_Timer();
-    while(reading != 0) 
+    while(reading = 0) 
     {
         hall_read = Read_Hall();
         if(hall_read == LOW)
