@@ -1,14 +1,14 @@
 /** @file HL_sys_main.c 
 *   @brief Application main file
-*   @date 08-Feb-2017
-*   @version 04.06.01
+*   @date 11-Dec-2018
+*   @version 04.07.01
 *
 *   This file contains an empty main function,
 *   which can be used for the application.
 */
 
 /* 
-* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -59,6 +59,7 @@
 #include "HL_rti.h"
 #include "HL_sys_core.h"
 #include "stdlib.h"
+#include "stdio.h"
 
 /* USER CODE END */
 
@@ -99,7 +100,7 @@
 #define TimeDelay 10
 #define BMSLED 9
 #define BSPDLED 14
-#define IMDLED 22
+#define IMDLED 15
 //====================================
 
 //PWM Channels
@@ -162,6 +163,7 @@ int main(void)
 
 
     //Calibrate ADC
+    //ADC calibration won't return if inputs are shorted to GND or HIGH
     adcCalibration(adcREG1);
     adcCalibration(adcREG2);
 
@@ -323,24 +325,26 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         compare2Counter ++;
         if(compare2Counter == 20)
         {
+            rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Need to reset BEFORE stopping the counter
+                                                            //Looks like reset automatically starts the timer
             rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK1);     //Stop Counter 1
-            rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);
 
             gioSetBit(hetPORT2, TimeDelay, 1);              //Set Time Delay pin to high
 
-            timeDelayFlag = 1;                              //Set Time Delay flag to high
+            //timeDelayFlag = 1;                              //Set Time Delay flag to high
             compare2Counter = 0;
 
             gioEnableNotification(gioPORTA, StartButton);   //Enable Start Button
+
         }
     }
-    if(notification == rtiNOTIFICATION_COMPARE2 &&timeDelayFlag == 1)//RTDS
+    if(notification == rtiNOTIFICATION_COMPARE2 && timeDelayFlag == 1)//RTDS
     {
         compare2Counter ++;
         if(compare2Counter == 6)
         {
             rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK1);
-            rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);
+            //rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);
 
             gioSetBit(hetPORT2, RTDS, 0);   //Disable RTDS
 
@@ -355,6 +359,9 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         }
         else
         {
+            //This is getting called once after time delay is finished
+            //also ADC is fucking broken lol
+
             gioToggleBit(hetPORT2, BMSLED);
             gioToggleBit(hetPORT2, IMDLED);
             gioToggleBit(hetPORT2, BSPDLED);
@@ -404,6 +411,9 @@ void startup()
     //Turn on RTDS for 1-3 seconds
     gioSetBit(hetPORT2, RTDS, 1);
     rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
+
+    timeDelayFlag = 1;
+    compare2Counter = 0;
 
     //Blink dash LEDs
     //This happens on the RTI interrupt

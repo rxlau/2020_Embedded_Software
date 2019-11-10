@@ -1,7 +1,7 @@
 /** @file HL_rti.h
 *   @brief RTI Driver Header File
-*   @date 08-Feb-2017
-*   @version 04.06.01
+*   @date 11-Dec-2018
+*   @version 04.07.01
 *   
 *   This file contains:
 *   - Definitions
@@ -12,7 +12,7 @@
 */
 
 /* 
-* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -255,8 +255,8 @@ typedef struct rti_config_reg
 #define RTI_TBCTRL_CONFIGVALUE  0x00000000U
 #define RTI_CAPCTRL_CONFIGVALUE  (0U | 0U)
 #define RTI_COMPCTRL_CONFIGVALUE (0x00001000U | 0x00000100U | 0x00000000U | 0x00000000U)
-#define RTI_UDCP0_CONFIGVALUE 9375U
-#define RTI_UDCP1_CONFIGVALUE 46875U
+#define RTI_UDCP0_CONFIGVALUE 93750U
+#define RTI_UDCP1_CONFIGVALUE 9375000U
 #define RTI_UDCP2_CONFIGVALUE 4687500U
 #define RTI_UDCP3_CONFIGVALUE 93750U
 

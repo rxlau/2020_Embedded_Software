@@ -1,7 +1,7 @@
 /** @file HL_system.h
 *   @brief System Driver Header File
-*   @date 08-Feb-2017
-*   @version 04.06.01
+*   @date 11-Dec-2018
+*   @version 04.07.01
 *   
 *   This file contains:
 *   - Definitions
@@ -11,7 +11,7 @@
 */
 
 /* 
-* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -469,14 +469,13 @@ enum flashWPowerModes
 /* System Interface Functions */
 void setupPLL(void);
 void trimLPO(void);
+void customTrimLPO(void);
 void setupFlash(void);
 void periphInit(void);
 void mapClocks(void);
 void systemInit(void);
 void systemPowerDown(uint32 mode);
 resetSource_t getResetSource(void);
-
-
 
 /* USER CODE BEGIN (4) */
 /* USER CODE END */

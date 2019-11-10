@@ -1,14 +1,14 @@
 /** @file HL_errata.c
 *   @brief Errata workaround Header File
-*   @date 08-Feb-2017
-*   @version 04.06.01
+*   @date 11-Dec-2018
+*   @version 04.07.01
 *
 *   This file contains:
 *   - Errata workaround API's
 */
 
 /* 
-* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 

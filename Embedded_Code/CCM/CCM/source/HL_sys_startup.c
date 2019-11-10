@@ -1,7 +1,7 @@
 /** @file HL_sys_startup.c 
 *   @brief Startup Source File
-*   @date 08-Feb-2017
-*   @version 04.06.01
+*   @date 11-Dec-2018
+*   @version 04.07.01
 *
 *   This file contains:
 *   - Include Files
@@ -14,7 +14,7 @@
 */
 
 /* 
-* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -60,6 +60,7 @@
 #include "HL_sys_core.h"
 #include "HL_esm.h"
 #include "HL_sys_mpu.h"
+#include "HL_errata_SSWF021_45.h"
 
 /* USER CODE BEGIN (1) */
 /* USER CODE END */
@@ -80,9 +81,10 @@ extern void exit(int _status);
 
 /* USER CODE BEGIN (3) */
 /* USER CODE END */
-
+void handlePLLLockFail(void);
 /* Startup Routine */
 void _c_int00(void);
+#define PLL_RETRIES 5U
 /* USER CODE BEGIN (4) */
 /* USER CODE END */
 
@@ -95,7 +97,7 @@ void _c_int00(void);
 /* Requirements : HL_CONQ_STARTUP_SR1 */
 void _c_int00(void)
 {
-
+	register resetSource_t rstSrc;
 /* USER CODE BEGIN (5) */
 /* USER CODE END */
 
@@ -108,9 +110,21 @@ void _c_int00(void)
     /* Reset handler: the following instructions read from the system exception status register
      * to identify the cause of the CPU reset.
      */
-    switch(getResetSource())
+	rstSrc = getResetSource();
+    switch(rstSrc)
     {
         case POWERON_RESET:
+		/* Initialize L2RAM to avoid ECC errors right after power on */
+		_memInit_();
+
+		/* Add condition to check whether PLL can be started successfully */
+        if (_errata_SSWF021_45_both_plls(PLL_RETRIES) != 0U)
+		{
+			/* Put system in a safe state */
+			handlePLLLockFail();
+		}
+		
+/*SAFETYMCUSW 62 S MR:15.2, 15.5 <APPROVED> "Need to continue to handle POWERON Reset" */
         case DEBUG_RESET:
         case EXT_RESET:
 
@@ -118,7 +132,10 @@ void _c_int00(void)
 /* USER CODE END */
 
         /* Initialize L2RAM to avoid ECC errors right after power on */
-        _memInit_();
+		if(rstSrc != POWERON_RESET)
+		{
+			_memInit_();
+		}
 
 /* USER CODE BEGIN (7) */
 /* USER CODE END */
@@ -178,6 +195,7 @@ void _c_int00(void)
 		
         case WATCHDOG_RESET:
         case WATCHDOG2_RESET:
+				
 /* USER CODE BEGIN (15) */
 /* USER CODE END */
         break;
@@ -203,6 +221,7 @@ void _c_int00(void)
         break;
     
         case SW_RESET:
+		
 /* USER CODE BEGIN (20) */
 /* USER CODE END */
         break;
@@ -254,7 +273,21 @@ void _c_int00(void)
 /* USER CODE BEGIN (29) */
 /* USER CODE END */
 
-
-
+/** @fn void handlePLLLockFail(void)
+*   @brief This function handles PLL lock fail.
+*/
 /* USER CODE BEGIN (30) */
+/* USER CODE END */
+void handlePLLLockFail(void)
+{
+/* USER CODE BEGIN (31) */
+/* USER CODE END */
+	while(1)
+	{
+		
+	}
+/* USER CODE BEGIN (32) */
+/* USER CODE END */
+}
+/* USER CODE BEGIN (33) */
 /* USER CODE END */
