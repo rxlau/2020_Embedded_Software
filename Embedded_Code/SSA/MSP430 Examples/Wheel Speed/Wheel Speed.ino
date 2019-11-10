@@ -15,6 +15,7 @@ void setup()
 {
   /* Hall Sensor Setup*/
   pinMode(hall_pin, INPUT); 
+  Serial.begin(9600);
 }
 
 /* function calcs wheel speed */
@@ -61,23 +62,42 @@ int wheel_speed(int half_rot_time)
   
 void loop() 
 {
+    /*Serial.println("Inside loop");*/
     int hall_read =0;
     int reading = 0; 
     int _speed_ = 0;
-    int lil_time = 0;
-    int ticks = 0;  
+    unsigned long initial_time = 0; 
+    unsigned long temp = 0; 
+    unsigned long lil_time = 0;
+    byte ticks = 0;  
   /* initiate Timer*/
     initiate_Timer();
-    while(reading = 0) 
+    while(reading == 0) 
     {
+        initial_time = micros(); 
+        //Serial.println(initial_time); 
+        //delay(100);
         hall_read = Read_Hall();
+        //Serial.println("Inside while loop");
+        //Serial.flush();
+        //noInterrupts();
+       // lil_time = pulseIn(hall_pin,HIGH);
+        //interrupts();
+        //Serial.println(lil_time);
+        
         if(hall_read == LOW)
         {
-            ticks = end_timer(); /*This will end the timer and return the number of ticks, each tick is 1 micro second*/
-            _speed_ = wheel_speed(ticks); /* will give the speed of this rotation*/
-            reading = 1; /* will then exit this loop to reset the timer*/
-            Serial.print(_speed_,DEC);
-          }
+           temp = micros(); 
+          // delay(500);  
+           //Serial.println(temp);
+           lil_time = temp; //initial_time; 
+           Serial.println(lil_time);  
+           // ticks = end_timer(); /*This will end the timer and return the number of ticks, each tick is 1 micro second*/
+            //Serial.println(ticks);
+            //_speed_ = wheel_speed(ticks); /* will give the speed of this rotation*/
+            //reading = 1; /* will then exit this loop to reset the timer*/
+           // Serial.println(_speed_,DEC);
+         }
        
 
     }
