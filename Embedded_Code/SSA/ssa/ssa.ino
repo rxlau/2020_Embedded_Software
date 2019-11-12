@@ -234,15 +234,15 @@ float gyro_conversion(int16_t rawgyro)
 void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gyroz)
 {
 
-  /*Serial.print("Gyro X = ");
+  Serial.print("Gyro X = ");
   Serial.println(gyrox, 3); //prints 3 decimal places
   Serial.print("Gyro Y = ");
   Serial.println(gyroy, 3); //prints 3 decimal places
   Serial.print("Gyro Z = ");
   Serial.println(gyroz, 3); //prints 3 decimal places
-*/
 
-	if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
+
+	/*if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
 	{
  		Serial.print("Accel X = ");
   		Serial.println(accelx, 3); //prints 3 decimal places
@@ -252,6 +252,7 @@ void printData(float accelx, float accely, float accelz, float gyrox, float gyro
   		Serial.println(accelz, 3); //prints 3 decimal places
   		Serial.println("\n\n");
 	}
+ */
 
 }
 
