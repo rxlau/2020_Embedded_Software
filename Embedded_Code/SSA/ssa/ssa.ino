@@ -1,4 +1,4 @@
-/*
+           /*
    Written and maintained by: 
    Andrew Kettle and Jada Berenguer
    October 26th, 2019
@@ -43,6 +43,7 @@ float temp1, temp2, temp3;
 #define gyro_control1 0x10 //Control of the gyro reg
 #define accel_control4 0x1E //Control of the accel reg4
 #define accel_control5 0x1F //Control of the accel reg5
+#define accel_control7 0x21 //Control of the accel reg5
 #define mag_pwr 0x16 //the register that powers the mangetometer
 //#define strt (0xD4>>1)
 #define strtw 0xD6 //send before write?
@@ -80,7 +81,7 @@ void loop() {
 
 //Reading IMU
   getI2CData();
-  delay(1000);
+  //delay(1000);
 
 //Reading IR sensors
 
@@ -125,11 +126,13 @@ void I2C_init()
   //Wire.write(strtw);
   //init power modes
   Wire.write(gyro_control1); //Control register for gyro
-  Wire.write(192); //Powers and set to 952 HZ, stock settings elsewhere
+  Wire.write(193); //Powers and set to 952 HZ, stock settings elsewhere, trial and error with filtering currently
   Wire.write(accel_control4);
   Wire.write(56); //Makes sure accel output is turned on
   Wire.write(accel_control5);
   Wire.write(56); 
+  Wire.write(accel_control7);
+  Wire.write(164);
 	
   //Wire.write(mag_pwr); //Mag mode
   Wire.endTransmission();
@@ -161,7 +164,6 @@ void getI2CData() //possible specify what data we want later instead of just inc
   Wire.endTransmission(true); //continue transmission until reading is done
 
   Wire.requestFrom(lsm9ds1_ag, 24); //requesting 12 bytes, or 3 16 bit numbers.
-  //readbytes = Wire.available(); //getting real numbers
   
   if(Wire.available()<=24) 
   { 
@@ -239,13 +241,17 @@ void printData(float accelx, float accely, float accelz, float gyrox, float gyro
   Serial.print("Gyro Z = ");
   Serial.println(gyroz, 3); //prints 3 decimal places
 */
-  Serial.print("Accel X = ");
-  Serial.println(accelx, 3); //prints 3 decimal places
-  Serial.print("Accel Y = ");
-  Serial.println(accely, 3); //prints 3 decimal places
-  Serial.print("Accel Z = ");
-  Serial.println(accelz, 3); //prints 3 decimal places
-  Serial.println("\n\n");
+
+	if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
+	{
+ 		Serial.print("Accel X = ");
+  		Serial.println(accelx, 3); //prints 3 decimal places
+  		Serial.print("Accel Y = ");
+  		Serial.println(accely, 3); //prints 3 decimal places
+  		Serial.print("Accel Z = ");
+  		Serial.println(accelz, 3); //prints 3 decimal places
+  		Serial.println("\n\n");
+	}
 
 }
 
