@@ -101,6 +101,15 @@
 #define BMSLED 9
 #define BSPDLED 14
 #define IMDLED 15
+
+//N2HET1 (DEBUGGING PINS)
+#define TorqueInd 22
+#define BatInd  25
+#define FaultInd 27
+
+//GIOB (DEBUGGING PINS)
+#define APPSInd 6
+#define BSEInd 7
 //====================================
 
 //PWM Channels
@@ -198,6 +207,7 @@ int main(void)
 //Bit 3 -> Start button
 void gioNotification(gioPORT_t *port, uint32 bit)
 {
+    gioSetBit(hetPORT1, FaultInd, 1);
     if(bit==BMSFault || bit==IMDFault || bit==BSPDFault)  //Fault causing inputs
         fault(bit);
 
@@ -212,8 +222,10 @@ void gioNotification(gioPORT_t *port, uint32 bit)
             startup();
         }
         else
+            gioSetBit(hetPORT1, FaultInd, 0);
             return;
     }
+    gioSetBit(hetPORT1, FaultInd, 0);
 }
 
 //rtiNotification
@@ -226,6 +238,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 {
     if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
     {
+        gioSetBit(hetPORT1, TorqueInd, 1);
         unsigned int adcArray[4];
         unsigned int outputArray[4];
         //Output array format
@@ -283,10 +296,11 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         canData[2] = steeringPercent;
 
         sendAllDataOBD(canData);
-
+        gioSetBit(hetPORT1, TorqueInd, 0);
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
+        gioSetBit(hetPORT1, BatInd, 1);
         //TODO: maybe move these variable elsewhere
         uint8_t bms1_temp[6];
         uint8_t bms2_temp[6];
@@ -318,6 +332,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         else
             pwmSetDuty(hetRAM1, Fans, 0);
 
+        gioSetBit(hetPORT1, BatInd, 0);
 
     }
     if(notification == rtiNOTIFICATION_COMPARE2 && timeDelayFlag == 0) //Time Delay
@@ -534,9 +549,15 @@ void adcConversion(unsigned int *adcArray)
 int APPSFault(int adcDiff)
 {
     if (adcDiff > 410)
+    {
+        gioSetBit(gioPORTB, APPSInd, 1);
         return 1;
+    }
     else
+    {
+        gioSetBit(gioPORTB, APPSInd, 0);
         return 0;
+    }
 }
 
 //BSEFault
@@ -547,15 +568,18 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 {
     if((bseFlag) && (accel1 > 205 || accel2 > 205))//205 is 5% of 4096
     {
+        gioSetBit(gioPORTB, BSEInd, 1);
         return 1;
     }
     else if((accel1 > 1024 || accel2 > 1024) && (brake > BRAKE_APPLIED_CUTOFF))//1024 is 25% of 4096
     {
+        gioSetBit(gioPORTB, BSEInd, 1);
         bseFlag = 1;
         return 1;
     }
     else if((bseFlag) && (accel1 < 205 && accel2 < 205))//205 is 5% of 4096
     {
+        gioSetBit(gioPORTB, BSEInd, 0);
         bseFlag = 0;
         return 0;
     }
