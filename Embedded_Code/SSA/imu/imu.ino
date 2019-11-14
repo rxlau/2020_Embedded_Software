@@ -1,7 +1,7 @@
-           /*
+/*
    Written and maintained by: 
-   Andrew Kettle and Jada Berenguer
-   October 26th, 2019
+   Andrew Kettle
+   November 14th, 2019
 */
 
 //headers:
@@ -16,28 +16,11 @@ float accel_conversion(int16_t rawaccel);
 float gyro_conversion(int16_t rawgyro);
 void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gryox);
 
-void getTemp();
-
 //pin declerations
-
 int sda = P2_2; //I2C pins
 int scl = P2_1;
-int irpin1 = A0; //3 analog IR sensors
-int irpin2 = A1;
-int irpin3 = A2;
-int sustrv = A3; //analog input for suspension travel, not implemented yet
-//int hallpin = P2.5; //Standard gpio for hall effect
-
-//read variables
-int irread1;
-int irread2;
-int irread3;
-int hallread;
-float voltage1, voltage2, voltage3;
-float temp1, temp2, temp3;
 
 //registers
-
 #define lsm9ds1_ag 0x6B //device reg
 
 #define gyro_control1 0x10 //Control of the gyro reg
@@ -65,34 +48,23 @@ float temp1, temp2, temp3;
 
 void setup() {
 
-  pinMode(irpin1, INPUT);
-  pinMode(irpin2, INPUT);
-  pinMode(irpin3, INPUT);
-  pinMode(sustrv, INPUT);
-
   I2C_init(); //initialize I2C transmission
-
   Serial.begin(9600);
 }
 
 void loop() {
 
-//Note: delay is measured in milliseconds  
-
-//Reading IMU
+  //Reading IMU
   getI2CData();
-  //delay(1000);
   Serial.flush();
 }
 
 void I2C_init()
-{
+{ 
   pinMode(scl, INPUT_PULLUP);
   pinMode(sda, INPUT_PULLUP);
-  
   Wire.begin(); //initialize i2c transmission
   Wire.beginTransmission(lsm9ds1_ag);
-  //Wire.write(strtw);
   //init power modes
   Wire.write(gyro_control1); //Control register for gyro
   Wire.write(193); //Powers and set to 952 HZ, stock settings elsewhere, trial and error with filtering currently
@@ -103,11 +75,10 @@ void I2C_init()
   Wire.write(accel_control7);
   Wire.write(164);
 	
-  //Wire.write(mag_pwr); //Mag mode
   Wire.endTransmission();
 }
 
-void getI2CData() //possible specify what data we want later instead of just including everything?
+void getI2CData() 
 {
 
   int16_t rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
@@ -132,9 +103,9 @@ void getI2CData() //possible specify what data we want later instead of just inc
 
   Wire.endTransmission(true); //continue transmission until reading is done
 
-  Wire.requestFrom(lsm9ds1_ag, 24); //requesting 12 bytes, or 3 16 bit numbers.
+  Wire.requestFrom(lsm9ds1_ag, 12); //requesting 12 bytes, 12 8 bit #'s, or 6 16 bit #'s
   
-  if(Wire.available()<=24) 
+  if(Wire.available()<=12) 
   { 
     gX0 = Wire.read();
     gX1 = Wire.read();
@@ -202,41 +173,24 @@ float gyro_conversion(int16_t rawgyro)
 
 void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gyroz)
 {
-
+/*
   Serial.print("Gyro X = ");
   Serial.println(gyrox, 3); //prints 3 decimal places
   Serial.print("Gyro Y = ");
   Serial.println(gyroy, 3); //prints 3 decimal places
   Serial.print("Gyro Z = ");
   Serial.println(gyroz, 3); //prints 3 decimal places
+*/
 
+  //if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
+  //{
+ 	  Serial.print("Accel X = ");
+  	Serial.println(accelx, 3); //prints 3 decimal places
+  	Serial.print("Accel Y = ");
+  	Serial.println(accely, 3); //prints 3 decimal places
+  	Serial.print("Accel Z = ");
+  	Serial.println(accelz, 3); //prints 3 decimal places
+  	Serial.println("\n\n");
+  //}
 
-	/*if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
-	{
- 		Serial.print("Accel X = ");
-  		Serial.println(accelx, 3); //prints 3 decimal places
-  		Serial.print("Accel Y = ");
-  		Serial.println(accely, 3); //prints 3 decimal places
-  		Serial.print("Accel Z = ");
-  		Serial.println(accelz, 3); //prints 3 decimal places
-  		Serial.println("\n\n");
-	}
- */
-
-}
-
-float calcTemp(float ADCread)
-{
-  float temperature;
-  float mVolts = (ADCread / 1023) * 5000;
-  if(mVolts < 2000)
-  {
-    temperature = (mVolts - 500) / 10; //standard function below 2V
-  }
-  else
-  {
-    float Volts = mVolts / 1000;
-    temperature = (41.413793103448 * Volts) - 29.758620689655; //switch to linear regression of data sheet function after 2V
-  }
-  return temperature; 
 }
