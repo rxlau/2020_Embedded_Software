@@ -103,13 +103,10 @@
 #define IMDLED 15
 
 //N2HET1 (DEBUGGING PINS)
-#define TorqueInd 22
-#define BatInd  25
+#define APPSInd 22
+#define BSEInd  25
 #define FaultInd 27
 
-//GIOB (DEBUGGING PINS)
-#define APPSInd 6
-#define BSEInd 7
 //====================================
 
 //PWM Channels
@@ -185,6 +182,7 @@ int main(void)
         //Need to initially have start button disabled
         //Wait for time to pass and call rtinotification compare2 using rticounter 1
     gioDisableNotification(gioPORTA, StartButton);  //Make sure start button is disabled
+
     rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
 
 
@@ -207,9 +205,12 @@ int main(void)
 //Bit 3 -> Start button
 void gioNotification(gioPORT_t *port, uint32 bit)
 {
-    gioSetBit(hetPORT1, FaultInd, 1);
     if(bit==BMSFault || bit==IMDFault || bit==BSPDFault)  //Fault causing inputs
+    {
         fault(bit);
+        //gioSetBit(hetPORT1, FaultInd, 0);   //This should never fucking get called lmao
+
+    }
 
     if(bit==StartButton) //Start Button signal
     {
@@ -222,10 +223,8 @@ void gioNotification(gioPORT_t *port, uint32 bit)
             startup();
         }
         else
-            gioSetBit(hetPORT1, FaultInd, 0);
             return;
     }
-    gioSetBit(hetPORT1, FaultInd, 0);
 }
 
 //rtiNotification
@@ -238,20 +237,26 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 {
     if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
     {
-        gioSetBit(hetPORT1, TorqueInd, 1);
         unsigned int adcArray[4];
         unsigned int outputArray[4];
+        unsigned int temp1;
         //Output array format
         //  [0]-ThrottleL  [1]-ThrottleR
         //  [2]-RegenL     [3]-RegenR
 
+
+
         //Get ADC Data
         adcConversion(adcArray);
+
 
         //TODO: Calibrate adc values once on vehicle (maybe do in adc conversion function)
         int adcDiff = adcArray[0] - adcArray[1];
         if (adcDiff < 0)
+        {
             adcDiff *= -1;
+        }
+
         //Check ADC Data
         if(APPSFault(adcDiff) || BSEFault(adcArray[0],adcArray[1],adcArray[2]))
         {
@@ -266,12 +271,28 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         }
         else
         {
+
+            temp1 = (adcArray[0] + adcArray[1])/2;
+            temp1 = ((float)temp1/4096) * 100;
+            outputArray[0] = temp1;
+            outputArray[1] = temp1;
+            outputArray[2] = 0;
+            outputArray[3] = 0;
+
             //Run Torque or Regen Vectoring Algorithm
-            TVA(outputArray, adcArray);
+            //TVA(outputArray, adcArray);----BROKE
+
+
         }
+
+
+        //outputArray[0] = 25;
+        //outputArray[1] = 75;
 
         //Output to motors
         motorOutput(outputArray);
+
+
 
         //Misc output functions (brake light)
         if(adcArray[2] > BRAKE_APPLIED_CUTOFF)
@@ -296,11 +317,11 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         canData[2] = steeringPercent;
 
         sendAllDataOBD(canData);
-        gioSetBit(hetPORT1, TorqueInd, 0);
+
+        gioSetBit(hetPORT1, FaultInd, 1);
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
-        gioSetBit(hetPORT1, BatInd, 1);
         //TODO: maybe move these variable elsewhere
         uint8_t bms1_temp[6];
         uint8_t bms2_temp[6];
@@ -332,19 +353,36 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         else
             pwmSetDuty(hetRAM1, Fans, 0);
 
-        gioSetBit(hetPORT1, BatInd, 0);
-
     }
     if(notification == rtiNOTIFICATION_COMPARE2 && timeDelayFlag == 0) //Time Delay
     {
+        //Time delay is to allow inputs to reach steady state before finishing initialization
+        //and allowing the car to startup
         compare2Counter ++;
-        if(compare2Counter == 20)
+        if(compare2Counter == 10)
         {
             rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Need to reset BEFORE stopping the counter
                                                             //Looks like reset automatically starts the timer
             rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK1);     //Stop Counter 1
 
             gioSetBit(hetPORT2, TimeDelay, 1);              //Set Time Delay pin to high
+
+            //Run initial fault check
+            //If any of the fault pins are initially low then we fault
+            if(gioGetBit(gioPORTA, BMSFault) == 0)
+            {
+                gioNotification(gioPORTA, BMSFault);
+            }
+
+            else if(gioGetBit(gioPORTA, IMDFault) == 0)
+            {
+                gioNotification(gioPORTA, IMDFault);
+            }
+
+            else if(gioGetBit(gioPORTA, BSPDFault) == 0)
+            {
+                gioNotification(gioPORTA, BSPDFault);
+            }
 
             //timeDelayFlag = 1;                              //Set Time Delay flag to high
             compare2Counter = 0;
@@ -410,12 +448,26 @@ void fault(int caller)
     //Set nonessential outputs based caller (DASH LEDs)
     if(caller == 0)
         gioSetBit(hetPORT2, BMSLED, 1);
+
     if(caller == 1)
         gioSetBit(hetPORT2, BSPDLED, 1);
+
     if(caller == 2)
         gioSetBit(hetPORT2, IMDLED, 1);
+
+    //gioSetBit(hetPORT1, FaultInd, 1);
     //Wait forever
-    while(1);
+    while(1)
+    {
+        if(gioGetBit(gioPORTA, BMSFault) == 0)
+            gioSetBit(hetPORT2, BMSLED, 1);
+
+        if(gioGetBit(gioPORTA, BSPDFault) == 0)
+            gioSetBit(hetPORT2, BSPDLED, 1);
+
+        if(gioGetBit(gioPORTA, IMDFault) == 0)
+            gioSetBit(hetPORT2, IMDLED, 1);
+    }
 }
 
 //startup
@@ -550,12 +602,12 @@ int APPSFault(int adcDiff)
 {
     if (adcDiff > 410)
     {
-        gioSetBit(gioPORTB, APPSInd, 1);
+        gioSetBit(hetPORT1, APPSInd, 1);
         return 1;
     }
     else
     {
-        gioSetBit(gioPORTB, APPSInd, 0);
+        gioSetBit(hetPORT1, APPSInd, 0);
         return 0;
     }
 }
@@ -568,23 +620,23 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 {
     if((bseFlag) && (accel1 > 205 || accel2 > 205))//205 is 5% of 4096
     {
-        gioSetBit(gioPORTB, BSEInd, 1);
+        gioSetBit(hetPORT1, BSEInd, 1);
         return 1;
     }
     else if((accel1 > 1024 || accel2 > 1024) && (brake > BRAKE_APPLIED_CUTOFF))//1024 is 25% of 4096
     {
-        gioSetBit(gioPORTB, BSEInd, 1);
         bseFlag = 1;
+        gioSetBit(hetPORT1, BSEInd, 1);
         return 1;
     }
     else if((bseFlag) && (accel1 < 205 && accel2 < 205))//205 is 5% of 4096
     {
-        gioSetBit(gioPORTB, BSEInd, 0);
         bseFlag = 0;
+        gioSetBit(hetPORT1, BSEInd, 0);
         return 0;
     }
     //NEED A DEFAULT RETURN SIGNAL
-    return;
+    return 0;
 }
 
 //pwmSetup
@@ -611,8 +663,13 @@ void motorOutput(unsigned int *outputArray)
 {
     pwmSetDuty(hetRAM1, ThrottleL, outputArray[0]);
     pwmSetDuty(hetRAM1, ThrottleR, outputArray[1]);
-    pwmSetDuty(hetRAM1, RegenL, outputArray[2]);
-    pwmSetDuty(hetRAM1, RegenR, outputArray[3]);
+
+    //pwmSetDuty(hetRAM1, ThrottleL, 75);
+    //pwmSetDuty(hetRAM1, ThrottleR, 25);
+
+
+    //pwmSetDuty(hetRAM1, RegenL, outputArray[2]);
+    //pwmSetDuty(hetRAM1, RegenR, outputArray[3]);
 }
 //TVA
 //Output array format
@@ -622,12 +679,13 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
 {
     //Unpack and process input array
     unsigned int Angle = adcArray[3];
-    float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    float TReq;    //Average two throttle inputs
     float lFactor, rFactor, m;
 
     //Do some math
     m = (0.6/DEADZONE_LOW);     //Factor used in TVA
-    TReq = (TReq/4096) * 100;   //Throttle request as a percentage, represented 0-100
+    TReq = (adcArray[0] + adcArray[1]) / 2;
+    TReq = ((float)TReq/4096) * 100;   //Throttle request as a percentage, represented 0-100
 
     //Run the Torque Vectoring Algorithm
     if(Angle <= DEADZONE_HIGH && Angle >= DEADZONE_LOW) //If Angle is within the deadzone
@@ -657,8 +715,8 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
 
     }
     //Populate output array
-    outputArray[0] = TReq * lFactor;    //ThrottleL
-    outputArray[1] = TReq * rFactor;    //ThrottleR
+    outputArray[0] = (float)TReq * lFactor;    //ThrottleL
+    outputArray[1] = (float)TReq * rFactor;    //ThrottleR
     outputArray[2] = 0;
     outputArray[3] = 0;
 
