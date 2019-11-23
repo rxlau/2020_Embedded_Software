@@ -81,47 +81,45 @@ int main(void)
         unsigned int adcArray[4];
 
         printf("TVA within dead zone, 3000 throttle\n");
-        outputArray[0]=3000; //ThrottleL
-        outputArray[1]=3000; //ThrottleR
-        outputArray[2]=0;    //RegenL
-        outputArray[3]=0;    //RegenR
         adcArray[0]=3000;    //Throttle1
         adcArray[1]=3000;    //Throttle2
         adcArray[2]=0;       //Brake
         adcArray[3]=2000;    //Angle
         TVA(outputArray, adcArray);
+        printf("ThrottleL = %d\n\n", outputArray[0]);
+        printf("ThrottleR = %d\n\n", outputArray[1]);
 
         printf("TVA turning left (angle<1500), 4000 throttle\n");
-        outputArray[0]=4000; //ThrottleL
-        outputArray[1]=4000; //ThrottleR
         adcArray[0]=4000;    //Throttle1
         adcArray[1]=4000;    //Throttle2
         adcArray[3]=1300;    //Angle
         TVA(outputArray, adcArray);
+        printf("ThrottleL = %d\n\n", outputArray[0]);
+        printf("ThrottleR = %d\n\n", outputArray[1]);
 
         printf("TVA turning right (angle>2600), 4000 throttle\n");
-        outputArray[0]=4000; //ThrottleL
-        outputArray[1]=4000; //ThrottleR
         adcArray[0]=4000;    //Throttle1
         adcArray[1]=4000;    //Throttle2
         adcArray[3]=3000;    //Angle
         TVA(outputArray, adcArray);
+        printf("ThrottleL = %d\n\n", outputArray[0]);
+        printf("ThrottleR = %d\n\n", outputArray[1]);
 
         printf("TVA turning left (angle<1500), 500 throttle\n");
-        outputArray[0]=500; //ThrottleL
-        outputArray[1]=500; //ThrottleR
         adcArray[0]=500;    //Throttle1
         adcArray[1]=500;    //Throttle2
         adcArray[3]=100;    //Angle
         TVA(outputArray, adcArray);
+        printf("ThrottleL = %d\n\n", outputArray[0]);
+        printf("ThrottleR = %d\n\n", outputArray[1]);
 
         printf("TVA turning right (angle<1500), 500 throttle\n");
-        outputArray[0]=500; //ThrottleL
-        outputArray[1]=500; //ThrottleR
         adcArray[0]=500;    //Throttle1
         adcArray[1]=500;    //Throttle2
         adcArray[3]=4000;   //Angle
         TVA(outputArray, adcArray);
+        printf("ThrottleL = %d\n\n", outputArray[0]);
+        printf("ThrottleR = %d\n\n", outputArray[1]);
 /* USER CODE END */
 
     return 0;
@@ -172,9 +170,9 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
     }
     //Populate output array
     outputArray[0] = (float)TReq * lFactor;    //ThrottleL
-    printf("ThrottleL = %d\t", outputArray[0]);
+    //printf("ThrottleL = %d\t", outputArray[0]);
     outputArray[1] = (float)TReq * rFactor;    //ThrottleR
-    printf("ThrottleR = %d\n\n", outputArray[1]);
+    //printf("ThrottleR = %d\n\n", outputArray[1]);
     outputArray[2] = 0;
     outputArray[3] = 0;
 }
