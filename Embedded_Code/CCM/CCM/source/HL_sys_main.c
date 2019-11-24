@@ -122,6 +122,7 @@
 //User Function Declarations
 //====================================
 void adcConversion(unsigned int *adcArray);
+void adcConversionRedundant(unsigned int *adcArray);
 int APPSFault(int);
 int brakeCheck();
 int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake);
@@ -130,6 +131,7 @@ void motorOutput(unsigned int *outputArray);
 void pwmSetup();
 void startup();
 void TVA(unsigned int *outputArray, unsigned int *adcArray);
+void ThrottleDecode(unsigned int *outputArray, unsigned int *adcArray);
 void getAllCANData(uint8_t *canData);
 void sendAllDataOBD(uint8_t *canData);
 uint32_t checkPackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize);
@@ -170,8 +172,8 @@ int main(void)
 
     //Calibrate ADC
     //ADC calibration won't return if inputs are shorted to GND or HIGH
-    adcCalibration(adcREG1);
-    adcCalibration(adcREG2);
+    //adcCalibration(adcREG1);
+    //adcCalibration(adcREG2);
 
     //Setup PWM outputs
     pwmSetup();
@@ -272,15 +274,19 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         else
         {
 
-            temp1 = (adcArray[0] + adcArray[1])/2;
+
+            /*temp1 = (adcArray[0] + adcArray[1])/2;
             temp1 = ((float)temp1/4096) * 100;
             outputArray[0] = temp1;
             outputArray[1] = temp1;
             outputArray[2] = 0;
-            outputArray[3] = 0;
+            outputArray[3] = 0;*/
+
+            //ThrottleDecode(outputArray, adcArray);
+
 
             //Run Torque or Regen Vectoring Algorithm
-            //TVA(outputArray, adcArray);----BROKE
+            TVA(outputArray, adcArray); //----BROKE
 
 
         }
@@ -293,12 +299,16 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         motorOutput(outputArray);
 
 
-
         //Misc output functions (brake light)
         if(adcArray[2] > BRAKE_APPLIED_CUTOFF)
+        {
             gioSetBit(hetPORT2, BrakeLight, 1);
+        }
         else
+        {
             gioSetBit(hetPORT2, BrakeLight, 0);
+        }
+
 
         //Input from CAN and output to OBD2
         //Converts data to percentages
@@ -318,7 +328,6 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 
         sendAllDataOBD(canData);
 
-        gioSetBit(hetPORT1, FaultInd, 1);
     }
     if(notification == rtiNOTIFICATION_COMPARE1) //Battery Management
     {
@@ -437,7 +446,10 @@ void fault(int caller)
 {
     //Disable Notifications if necessary
     if(caller == 3)
+    {
         rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK0);
+        gioSetBit(hetPORT1, FaultInd, 1);
+    }
 
     //Zero Throttle and Regen Requests
     pwmSetDuty(hetRAM1,ThrottleL,0);
@@ -511,6 +523,44 @@ int brakeCheck()
 //[0]-Throttle1 [1]-Throttle2
 //[2]-Brake     [3]-Angle
 void adcConversion(unsigned int *adcArray)
+{
+    adcData_t adc1Array[4];
+    unsigned int tempValue1;
+    int num1, i;
+
+    //Start ADC Conversion
+    adcStartConversion(adcREG1, adcGROUP1);
+
+    //Wait for ADC to complete
+    while(!adcIsConversionComplete(adcREG1, adcGROUP1));
+
+    //Get ADC Data
+    num1 = adcGetData(adcREG1, 1U, adc1Array);
+
+    for(i = 0; i<num1; i++)
+    {
+        tempValue1 = adc1Array[i].value;
+
+        switch(i)
+        {
+        case 0:
+            adcArray[2] = tempValue1;   //Brake
+            break;
+        case 1:
+            adcArray[3] = tempValue1;   //Angle
+            break;
+        case 2:
+            adcArray[0] = tempValue1;   //Throttle1
+            break;
+        case 3:
+            adcArray[1] = tempValue1;   //Throttle2
+            break;
+        }
+    }
+
+}
+
+void adcConversionRedundant(unsigned int *adcArray)
 {
     adcData_t adc1Array[4], adc2Array[4];
     unsigned int brake[2], throttle1[2], throttle2[2], angle[2];
@@ -720,6 +770,20 @@ void TVA(unsigned int *outputArray, unsigned int *adcArray)
     outputArray[2] = 0;
     outputArray[3] = 0;
 
+}
+
+
+//Does nothing other than map the throttle request to a duty cycle to send to the motors
+//Used for debugging since TVA broke
+void ThrottleDecode(unsigned int *outputArray, unsigned int *adcArray)
+{
+    unsigned int temp1;
+    temp1 = (adcArray[0] + adcArray[1])/2;
+    temp1 = ((float)temp1/4096) * 100;
+    outputArray[0] = temp1;
+    outputArray[1] = temp1;
+    outputArray[2] = 0;
+    outputArray[3] = 0;
 }
 
 void getAllCANData(uint8_t *canData){
