@@ -2,6 +2,8 @@
 #define _IMU_
 
 #include "Wire.h"
+//#include "msp430.h"
+#include "Energia.h"
 
 //Functions:
 void I2C_init();
@@ -10,10 +12,6 @@ int16_t convert_16bit(int8_t high, int8_t low);
 float accel_conversion(int16_t rawaccel);
 float gyro_conversion(int16_t rawgyro);
 void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gryox);
-
-//pin declerations
-int sda = P2_2; //I2C pins
-int scl = P2_1;
 
 //registers
 #define lsm9ds1_ag 0x6B //device reg

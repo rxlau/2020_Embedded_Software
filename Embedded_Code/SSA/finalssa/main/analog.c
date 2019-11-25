@@ -1,20 +1,13 @@
 #include "analog.h"
-
+  
 void analogSetup() {
-
-  //pin declerations  
-  int irpin1 = A0; //3 analog IR sensors
-  int irpin2 = A1;
-  int irpin3 = A2;
-  int sustrv = A3; //analog input for suspension travel, not implemented yet
-
   pinMode(irpin1, INPUT);
   pinMode(irpin2, INPUT);
   pinMode(irpin3, INPUT);
   pinMode(sustrv, INPUT);
 }
 
-char *analogData(char *analogarr) { //Reading IR sensors
+char* analogData(char *analogarr) { //Reading IR sensors
 
   //sensor1
   irread1 = analogRead(irpin1);

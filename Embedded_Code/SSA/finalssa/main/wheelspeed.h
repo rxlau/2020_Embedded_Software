@@ -2,7 +2,8 @@
 #define _WHEELSPEED_
 
 #include "Wire.h"
-#include "msp430.h"
+//#include "msp430.h"
+#include "Energia.h"
 
 void wheelspeedSetup();
 float wheelspeedCalc(float time_difference_micro); //delete print statements after testing

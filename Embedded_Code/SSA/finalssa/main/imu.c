@@ -9,6 +9,9 @@
 
 void I2C_init()
 { 
+  //pin declerations
+  int sda = P2_2; //I2C pins
+  int scl = P2_1;
   pinMode(scl, INPUT_PULLUP);
   pinMode(sda, INPUT_PULLUP);
   Wire.begin(); //initialize i2c transmission
