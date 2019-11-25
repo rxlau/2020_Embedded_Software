@@ -1,10 +1,10 @@
 #include "analog.h"
+#include "Energia.h"
   
 void analogSetup() {
   pinMode(irpin1, INPUT);
   pinMode(irpin2, INPUT);
   pinMode(irpin3, INPUT);
-  pinMode(sustrv, INPUT);
 }
 
 char* analogData(char *analogarr) { //Reading IR sensors
@@ -26,7 +26,7 @@ char* analogData(char *analogarr) { //Reading IR sensors
   analogarr[1] = temp2;
   analogarr[2] = temp3;
 	
-  return &analogarr;
+  return &analogarr[0];
 }
 
 char analogConvert(char readval)

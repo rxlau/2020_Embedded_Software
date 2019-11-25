@@ -1,14 +1,15 @@
+#include <wheelspeed.h>
+#include <analog.h>
+#include <imu.h>
+
 /* main function for calling all of the various SSA functions */
 
 //include all header files
-#include "imu.h"
-#include "analog.h"
-#include "wheelspeed.h"
 
 void setup() //initializes different sensors
 {
 	I2C_init();	
-	analog_Setup();
+	analogSetup();
 	wheelspeedSetup();
 }
 
@@ -25,7 +26,7 @@ void loop()
 	
 	//pack this data into CAN
 	analogptr = analogData(analogptr); 
-	imuptr = getI2Cdata(imuptr);
+	imuptr = getI2CData(imuptr);
 	wheelspeedptr = getwheelspeedData();
 
 }

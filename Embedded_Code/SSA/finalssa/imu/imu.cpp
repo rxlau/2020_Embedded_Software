@@ -6,6 +6,8 @@
 
 //headers:
 #include "imu.h"
+#include "Wire.h"
+#include "Energia.h"
 
 void I2C_init()
 { 
@@ -103,7 +105,7 @@ float *getI2CData(float *imuarr) //check naming and syntax
   imuarr[4] = convaccely;
   imuarr[5] = convaccelz;
 
-  return &immuarr; //check syntax
+  return &imuarr[0]; //check syntax
 	
 }
 

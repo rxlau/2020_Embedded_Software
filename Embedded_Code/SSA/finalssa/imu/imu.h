@@ -1,8 +1,6 @@
 #ifndef _IMU_
 #define _IMU_
 
-#include "Wire.h"
-//#include "msp430.h"
 #include "Energia.h"
 
 //Functions:

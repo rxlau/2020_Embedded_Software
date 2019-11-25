@@ -1,9 +1,8 @@
 #ifndef _ANALOG_
 #define _ANALOG_
 
-#include "msp430.h"
-#include "Energia.h"
 //Functions:
+#include "Energia.h"
 
 void analogSetup();
 char* analogData(char *analogarr);
@@ -11,7 +10,7 @@ char analogConvert(char readval);
 char calcTemp(char aread);
 
 //pin declerations  
-int irpin1 = A0; //3 analog IR sensors
+int irpin1 = A0;
 int irpin2 = A1;
 int irpin3 = A2;
 //int sustrv = A3; //analog input for suspension travel, not implemented yet
