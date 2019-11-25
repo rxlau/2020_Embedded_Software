@@ -1,14 +1,14 @@
 /* main function for calling all of the various SSA functions */
 
 //include all header files
-//#include "/imu/imu.h"
-#include "../analog/analog.h"
-#include "../wheelspeed/wheelspeed.h"
+#include "imu.h"
+#include "analog.h"
+#include "wheelspeed.h"
 
 void setup() //initializes different sensors
 {
 	I2C_init();	
-	analog_setup();
+	analog_Setup();
 	wheelspeedSetup();
 }
 
