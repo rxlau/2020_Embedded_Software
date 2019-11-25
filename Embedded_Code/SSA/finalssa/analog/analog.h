@@ -1,3 +1,6 @@
+#ifndef _ANALOG_
+#define _ANALOG_
+
 //Functions:
 
 void analogSetup();
@@ -20,3 +23,5 @@ char irread3;
 
 char voltage1, voltage2, voltage3;
 char temp1, temp2, temp3;
+
+#endif
