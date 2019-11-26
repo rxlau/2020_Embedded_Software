@@ -33,10 +33,9 @@ void I2C_init()
   Wire.endTransmission();
 }
 
-float *getI2CData(float *imuarr) //check naming and syntax
+float *getI2CData(float *imupointer) //check naming and syntax
 {
-
-  int16_t rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
+  float rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
   float convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz;
   int8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
 
@@ -97,15 +96,15 @@ float *getI2CData(float *imuarr) //check naming and syntax
 
   //packing into array
 
-  imuarr[0] = convgyrox;
-  imuarr[1] = convgyroy;
-  imuarr[2] = convgyroz;
+  *(imupointer + 0) = convgyrox;
+  *(imupointer + 1) = convgyroy;
+  *(imupointer + 2) = convgyroz;
 
-  imuarr[3] = convaccelx;
-  imuarr[4] = convaccely;
-  imuarr[5] = convaccelz;
+  *(imupointer + 3) = convaccelx;
+  *(imupointer + 4) = convaccely;
+  *(imupointer + 5) = convaccelz;
 
-  return &imuarr[0]; //check syntax
+  return imupointer; //check syntax
 	
 }
 

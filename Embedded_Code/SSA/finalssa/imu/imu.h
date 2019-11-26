@@ -5,7 +5,7 @@
 
 //Functions:
 void I2C_init();
-float *getI2CData(float *imuarr);
+float *getI2CData(float *imupointer);
 int16_t convert_16bit(int8_t high, int8_t low);
 float accel_conversion(int16_t rawaccel);
 float gyro_conversion(int16_t rawgyro);
