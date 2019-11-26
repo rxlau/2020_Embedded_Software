@@ -149,7 +149,7 @@ void printData(float accelx, float accely, float accelz, float gyrox, float gyro
 
   if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
   {
- 	  Serial.print("Accel X = ");
+ 	Serial.print("Accel X = ");
   	Serial.println(accelx, 3); //prints 3 decimal places
   	Serial.print("Accel Y = ");
   	Serial.println(accely, 3); //prints 3 decimal places
