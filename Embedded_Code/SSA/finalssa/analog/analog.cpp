@@ -20,7 +20,7 @@ void analogSetup() {
   pinMode(irpin3, INPUT);
 }
 
-char* analogData(char *analogarr) { //Reading IR sensors
+char* analogData(char *analogarray) { //Reading IR sensors
 
   //sensor1
   irread1 = analogRead(irpin1);
@@ -35,11 +35,11 @@ char* analogData(char *analogarr) { //Reading IR sensors
   voltage3 = analogConvert(irread3);
   temp3 = calcTemp(irread3);
 
-  analogarr[0] = temp1; //contigous places in memory
-  analogarr[1] = temp2;
-  analogarr[2] = temp3;
+  *(analogarray + 0) = temp1; //contigous places in memory
+  *(analogarray + 1) = temp2;
+  *(analogarray + 2) = temp3;
 	
-  return &analogarr[0];
+  return analogarray;
 }
 
 char analogConvert(char readval)
