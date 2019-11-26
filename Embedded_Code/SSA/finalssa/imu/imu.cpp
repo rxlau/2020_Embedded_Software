@@ -1,66 +1,19 @@
 /*
    Written and maintained by: 
    Andrew Kettle
-   November 14th, 2019
+   November 23rd, 2019
 */
 
 //headers:
-
+#include "imu.h"
 #include "Wire.h"
-
-//Functions:
-void I2C_init();
-void getI2CData();
-int16_t convert_16bit(int8_t high, int8_t low);
-float accel_conversion(int16_t rawaccel);
-float gyro_conversion(int16_t rawgyro);
-void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gryox);
-
-//pin declerations
-int sda = P2_2; //I2C pins
-int scl = P2_1;
-
-//registers
-#define lsm9ds1_ag 0x6B //device reg
-
-#define gyro_control1 0x10 //Control of the gyro reg
-#define accel_control4 0x1E //Control of the accel reg4
-#define accel_control5 0x1F //Control of the accel reg5
-#define accel_control7 0x21 //Control of the accel reg5
-#define mag_pwr 0x16 //the register that powers the mangetometer
-//#define strt (0xD4>>1)
-#define strtw 0xD6 //send before write?
-#define strtr 0xD5
-
-#define gyroX0 0x18 //accel output registerss
-#define gyroX1 0x19
-#define gyroY0 0x1A
-#define gyroY1 0x1B
-#define gyroZ0 0x1C
-#define gyroZ1 0x1D
-
-#define accelX0 0x28 //accel output registerss
-#define accelX1 0x29
-#define accelY0 0x2A
-#define accelY1 0x2B
-#define accelZ0 0x2C
-#define accelZ1 0x2D
-
-void setup() {
-
-  I2C_init(); //initialize I2C transmission
-  Serial.begin(9600);
-}
-
-void loop() {
-
-  //Reading IMU
-  getI2CData();
-  Serial.flush();
-}
+#include "Energia.h"
 
 void I2C_init()
 { 
+  //pin declerations
+  int sda = P2_2; //I2C pins
+  int scl = P2_1;
   pinMode(scl, INPUT_PULLUP);
   pinMode(sda, INPUT_PULLUP);
   Wire.begin(); //initialize i2c transmission
@@ -72,16 +25,17 @@ void I2C_init()
   Wire.write(56); //Makes sure accel output is turned on
   Wire.write(accel_control5);
   Wire.write(56); 
+  Wire.write(accel_control6);
+  Wire.write(192); 
   Wire.write(accel_control7);
-  Wire.write(164);
+  Wire.write(196);
 	
   Wire.endTransmission();
 }
 
-void getI2CData() 
+float *getI2CData(float *imupointer) //check naming and syntax
 {
-
-  int16_t rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
+  float rawaccelx, rawaccely, rawaccelz, rawgyrox, rawgyroy, rawgyroz;
   float convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz;
   int8_t gX0, gX1, gY0, gY1, gZ0, gZ1, aX0, aX1, aY0, aY1, aZ0, aZ1;
 
@@ -140,7 +94,18 @@ void getI2CData()
   convaccely = accel_conversion(rawaccely);
   convaccelz = accel_conversion(rawaccelz);
 
-  printData(convaccelx, convaccely, convaccelz, convgyrox, convgyroy, convgyroz);	
+  //packing into array
+
+  *(imupointer + 0) = convgyrox;
+  *(imupointer + 1) = convgyroy;
+  *(imupointer + 2) = convgyroz;
+
+  *(imupointer + 3) = convaccelx;
+  *(imupointer + 4) = convaccely;
+  *(imupointer + 5) = convaccelz;
+
+  return imupointer; //check syntax
+	
 }
 
 //converts to 16 bit number
@@ -173,24 +138,23 @@ float gyro_conversion(int16_t rawgyro)
 
 void printData(float accelx, float accely, float accelz, float gyrox, float gyroy, float gyroz)
 {
-/*
+
   Serial.print("Gyro X = ");
   Serial.println(gyrox, 3); //prints 3 decimal places
   Serial.print("Gyro Y = ");
   Serial.println(gyroy, 3); //prints 3 decimal places
   Serial.print("Gyro Z = ");
   Serial.println(gyroz, 3); //prints 3 decimal places
-*/
 
-  //if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
-  //{
- 	  Serial.print("Accel X = ");
+  if((accelx > .500 || accelx < -.500) || (accely > .500 || accely < -.500) || (accelz > .500 || accelz < -.500)) //temporary filter for bad data
+  {
+ 	Serial.print("Accel X = ");
   	Serial.println(accelx, 3); //prints 3 decimal places
   	Serial.print("Accel Y = ");
   	Serial.println(accely, 3); //prints 3 decimal places
   	Serial.print("Accel Z = ");
   	Serial.println(accelz, 3); //prints 3 decimal places
   	Serial.println("\n\n");
-  //}
+  }
 
 }
