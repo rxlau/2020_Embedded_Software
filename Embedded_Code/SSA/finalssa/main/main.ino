@@ -28,15 +28,13 @@ void loop()
 
   //testing
   
-  for(int i = 0; i < 6; i++)
+  /*for(int i = 0; i < 6; i++)
   {    
     Serial.println(*(imuptr+i)); //print statement is printing backwards questionmarks
   }
-  for(int i = 0; i < 3; i++)
-  {    
-    Serial.println(*(analogptr+i)); //print statement is printing backwards questionmarks
-  }
-  Serial.println(wheelspeed);
+  delay(1000);
+  
+  Serial.println(*analogptr);
   Serial.flush();
-
+  */
 }

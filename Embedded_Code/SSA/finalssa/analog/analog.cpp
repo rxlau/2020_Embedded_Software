@@ -2,7 +2,7 @@
 #include "Energia.h"
   
 //pin declerations  
-int irpin1 = A0;
+int irpin1 = A3;
 int irpin2 = A1;
 int irpin3 = A2;
 //int sustrv = A3; //analog input for suspension travel, not implemented yet
@@ -37,7 +37,7 @@ char* analogData(char *analogarray) { //Reading IR sensors
 
   *(analogarray + 0) = temp1; //contigous places in memory
   *(analogarray + 1) = temp2;
-  *(analogarray + 2) = temp3;
+  *(analogarray + 2) = temp3; 
 	
   return analogarray;
 }
