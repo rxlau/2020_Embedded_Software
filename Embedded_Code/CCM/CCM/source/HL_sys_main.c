@@ -75,10 +75,12 @@
 
 //Parameters
 //====================================
-#define BRAKE_APPLIED_CUTOFF 400
 #define PWM_PERIOD 100
 #define BATTERY_TEMP_FAN_TURNON 0xFFF
 
+//ADC dependent params
+#define BRAKE_APPLIED_CUTOFF 1000    //Should we have a high and low parameter and calculate these values based off of that?
+#define BSE_CLEAR_CUTOFF 405
 #define DEADZONE_LOW 1536
 #define DEADZONE_HIGH 2560
 //====================================
@@ -142,6 +144,7 @@ uint32_t checkPackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize);
 int bseFlag = 0;
 int timeDelayFlag = 0;
 int compare2Counter = 0;
+int faultEnableFlag = 0;
 //====================================
 
 
@@ -187,6 +190,8 @@ int main(void)
 
     rtiStartCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Start RTI Counter
 
+    faultEnableFlag = 0;
+
 
     //Loop Forever
     while(1);
@@ -209,7 +214,15 @@ void gioNotification(gioPORT_t *port, uint32 bit)
 {
     if(bit==BMSFault || bit==IMDFault || bit==BSPDFault)  //Fault causing inputs
     {
-        fault(bit);
+
+        if(faultEnableFlag == 1)        //faults are enabled
+        {
+            fault(bit);
+        }
+        else
+        {
+            return;
+        }
         //gioSetBit(hetPORT1, FaultInd, 0);   //This should never fucking get called lmao
 
     }
@@ -274,26 +287,10 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         else
         {
 
-
-            /*temp1 = (adcArray[0] + adcArray[1])/2;
-            temp1 = ((float)temp1/4096) * 100;
-            outputArray[0] = temp1;
-            outputArray[1] = temp1;
-            outputArray[2] = 0;
-            outputArray[3] = 0;*/
-
-            //ThrottleDecode(outputArray, adcArray);
-
-
             //Run Torque or Regen Vectoring Algorithm
-            TVA(outputArray, adcArray); //----BROKE
-
+            TVA(outputArray, adcArray);
 
         }
-
-
-        //outputArray[0] = 25;
-        //outputArray[1] = 75;
 
         //Output to motors
         motorOutput(outputArray);
@@ -368,7 +365,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         //Time delay is to allow inputs to reach steady state before finishing initialization
         //and allowing the car to startup
         compare2Counter ++;
-        if(compare2Counter == 10)
+        if(compare2Counter == 20)                           //10 second delay
         {
             rtiResetCounter(rtiREG1, rtiCOUNTER_BLOCK1);    //Need to reset BEFORE stopping the counter
                                                             //Looks like reset automatically starts the timer
@@ -377,20 +374,24 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
             gioSetBit(hetPORT2, TimeDelay, 1);              //Set Time Delay pin to high
 
             //Run initial fault check
+            faultEnableFlag = 1;                                  //Enable fault detection now that time delay phase is over
             //If any of the fault pins are initially low then we fault
             if(gioGetBit(gioPORTA, BMSFault) == 0)
             {
                 gioNotification(gioPORTA, BMSFault);
+                //fault(0);
             }
 
-            else if(gioGetBit(gioPORTA, IMDFault) == 0)
+            if(gioGetBit(gioPORTA, IMDFault) == 0)
             {
                 gioNotification(gioPORTA, IMDFault);
+                //fault(2);
             }
 
-            else if(gioGetBit(gioPORTA, BSPDFault) == 0)
+            if(gioGetBit(gioPORTA, BSPDFault) == 0)
             {
                 gioNotification(gioPORTA, BSPDFault);
+                //fault(1);
             }
 
             //timeDelayFlag = 1;                              //Set Time Delay flag to high
@@ -668,7 +669,7 @@ int APPSFault(int adcDiff)
 //Return 0 if no fault
 int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 {
-    if((bseFlag) && (accel1 > 205 || accel2 > 205))//205 is 5% of 4096
+    if((bseFlag) && (accel1 > 420 || accel2 > 420))//205 is 5% of 4096
     {
         gioSetBit(hetPORT1, BSEInd, 1);
         return 1;
@@ -679,7 +680,7 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
         gioSetBit(hetPORT1, BSEInd, 1);
         return 1;
     }
-    else if((bseFlag) && (accel1 < 205 && accel2 < 205))//205 is 5% of 4096
+    else if((bseFlag) && (accel1 < 420 && accel2 < 420))//205 is 5% of 4096
     {
         bseFlag = 0;
         gioSetBit(hetPORT1, BSEInd, 0);
