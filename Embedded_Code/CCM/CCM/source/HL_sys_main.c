@@ -80,7 +80,7 @@
 
 //ADC dependent params
 #define BRAKE_APPLIED_CUTOFF 1000    //Should we have a high and low parameter and calculate these values based off of that?
-#define BSE_CLEAR_CUTOFF 405
+#define BSE_CLEAR_CUTOFF 400
 #define DEADZONE_LOW 1536
 #define DEADZONE_HIGH 2560
 //====================================
@@ -669,7 +669,7 @@ int APPSFault(int adcDiff)
 //Return 0 if no fault
 int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 {
-    if((bseFlag) && (accel1 > 420 || accel2 > 420))//205 is 5% of 4096
+    if((bseFlag) && ((accel1 > BSE_CLEAR_CUTOFF) || (accel2 > BSE_CLEAR_CUTOFF)))//205 is 5% of 4096
     {
         gioSetBit(hetPORT1, BSEInd, 1);
         return 1;
@@ -680,7 +680,7 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
         gioSetBit(hetPORT1, BSEInd, 1);
         return 1;
     }
-    else if((bseFlag) && (accel1 < 420 && accel2 < 420))//205 is 5% of 4096
+    else if((bseFlag) && ((accel1 < BSE_CLEAR_CUTOFF) && (accel2 < BSE_CLEAR_CUTOFF)))//205 is 5% of 4096
     {
         bseFlag = 0;
         gioSetBit(hetPORT1, BSEInd, 0);
