@@ -1,5 +1,4 @@
-Name: Suspension System Array
-Engineers: Leslie Uribe and Micheal Barbosa
-Test Engineers: Andrew Kettle and Jada Berenguer
-
-Description:
+Name: Suspension Sensor Array
+Engineers: Andrew Kettle, Leslie Uribe, Micheal Barbosa
+Test Engineers: Jada Berenguer 
+Description: Data Acquisition component for EV Racecar.
