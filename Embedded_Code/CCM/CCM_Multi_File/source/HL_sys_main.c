@@ -194,7 +194,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         else
         {
             //Run Torque or Regen Vectoring Algorithm
-            TVA(outputArray, adcArray);
+            setThrottleOutput(outputArray, adcArray);
         }
 
         //Output to motors
@@ -208,10 +208,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 
         //Input from CAN and output to OBD2
         //Converts data to percentages
-        uint8_t throttleLPercent = outputArray[0];
-        uint8_t throttleRPercent = outputArray[1];
-        uint8_t regenLPercent = outputArray[2];
-        uint8_t regenRPercent = outputArray[3];
+        uint8_t throttlePercent = outputArray[0];
         uint8_t brakePercent = adcArray[2]/4096;
         uint8_t steeringPercent = adcArray[3]/4096;
 

@@ -177,10 +177,7 @@ void fault(int caller)
         rtiStopCounter(rtiREG1, rtiCOUNTER_BLOCK0);
 
     //Zero Throttle and Regen Requests
-    pwmSetDuty(hetRAM1,ThrottleL,0);
-    pwmSetDuty(hetRAM1,ThrottleR,0);
-    pwmSetDuty(hetRAM1,RegenL,0);
-    pwmSetDuty(hetRAM1,RegenR,0);
+    pwmSetDuty(hetRAM1,Throttle,0);
 
     //Set nonessential outputs based caller (DASH LEDs)
     if(caller == 0)
@@ -197,10 +194,7 @@ void fault(int caller)
 //Handles setting PWM values for motor output
 void motorOutput(unsigned int *outputArray)
 {
-    pwmSetDuty(hetRAM1, ThrottleL, outputArray[0]);
-    pwmSetDuty(hetRAM1, ThrottleR, outputArray[1]);
-    pwmSetDuty(hetRAM1, RegenL, outputArray[2]);
-    pwmSetDuty(hetRAM1, RegenR, outputArray[3]);
+    pwmSetDuty(hetRAM1, Throttle, outputArray[0]);
 }
 
 //pwmSetup
@@ -208,15 +202,7 @@ void motorOutput(unsigned int *outputArray)
 //Only exists for the sake of making code look cleaner
 void pwmSetup()
 {
-    pwmSetDuty(hetRAM1, ThrottleL, 0);
-
-    pwmSetDuty(hetRAM1, ThrottleR, 0);
-
-    pwmSetDuty(hetRAM1, RegenL, 0);
-
-    pwmSetDuty(hetRAM1, RegenR, 0);
-
-    pwmSetDuty(hetRAM1, Fans, 0);
+    pwmSetDuty(hetRAM1, Throttle, 0);
 }
 
 //startup
@@ -236,50 +222,12 @@ void startup()
 //Output array format
 //  [0]-ThrottleL  [1]-ThrottleR
 //  [2]-RegenL     [3]-RegenR
-void TVA(unsigned int *outputArray, unsigned int *adcArray)
+void setThrottleOutput(unsigned int *outputArray, unsigned int *adcArray)
 {
     //Unpack and process input array
-    unsigned int Angle = adcArray[3];
     float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
-    float lFactor, rFactor, m;
-
-    //Do some math
-    m = (0.6/DEADZONE_LOW);     //Factor used in TVA
-    TReq = (TReq/4096) * 100;   //Throttle request as a percentage, represented 0-100
-
-    //Run the Torque Vectoring Algorithm
-    if(Angle <= DEADZONE_HIGH && Angle >= DEADZONE_LOW) //If Angle is within the deadzone
-    {
-        lFactor = 1;
-        rFactor = 1;
-    }
-    else if(Angle < DEADZONE_LOW || Angle > DEADZONE_HIGH)//If Angle is outside of deadzone
-    {
-        if(Angle < DEADZONE_LOW)    //Turning Left
-        {
-            lFactor = (m * Angle) + 0.4;
-        }
-        else
-        {
-            lFactor = 1;
-        }
-
-        if(Angle > DEADZONE_HIGH)   //Turning Right
-        {
-            rFactor = ((-m) * Angle) + (0.4 - (4096 * -m));
-        }
-        else
-        {
-            rFactor = 1;
-        }
-
-    }
     //Populate output array
-    outputArray[0] = TReq * lFactor;    //ThrottleL
-    outputArray[1] = TReq * rFactor;    //ThrottleR
-    outputArray[2] = 0;
-    outputArray[3] = 0;
-
+    outputArray[0] = TReq;    //Throttle
 }
 
 void getAllCANData(uint8_t *canData){

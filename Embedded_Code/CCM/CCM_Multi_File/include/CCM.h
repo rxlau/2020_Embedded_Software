@@ -47,11 +47,7 @@
 //====================================
 //PWM Channels
 //====================================
-#define ThrottleL pwm0
-#define ThrottleR pwm1
-#define RegenL pwm2
-#define RegenR pwm3
-#define Fans pwm4
+#define Throttle pwm0
 //====================================
 
 //====================================
