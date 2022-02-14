@@ -61,7 +61,7 @@ void fault(int caller);
 void motorOutput(unsigned int *outputArray);
 void pwmSetup();
 void startup();
-void TVA(unsigned int *outputArray, unsigned int *adcArray);
+void setThrottleOutput(unsigned int *throttleOutput, unsigned int *adcArray);
 void getAllCANData(uint8_t *canData);
 void sendAllDataOBD(uint8_t *canData);
 uint32_t checkPackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize);

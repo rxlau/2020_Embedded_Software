@@ -167,10 +167,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
     {
         unsigned int adcArray[4];
-        unsigned int outputArray[4];
-        //Output array format
-        //  [0]-ThrottleL  [1]-ThrottleR
-        //  [2]-RegenL     [3]-RegenR
+        unsigned int throttleOutput;
 
         //Get ADC Data
         adcConversion(adcArray);
@@ -183,22 +180,15 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         if(APPSFault(adcDiff) || BSEFault(adcArray[0],adcArray[1],adcArray[2]))
         {
             //Set motor output = 0
-            outputArray[0] = 0;
-            outputArray[1] = 0;
-
-            //Should we also zero Regen?
-            outputArray[2] = 0;
-            outputArray[3] = 0;
-            //Do we want to set throttle/output values in an array and then output once?
+            throttleOutput = 0;
         }
         else
         {
-            //Run Torque or Regen Vectoring Algorithm
-            setThrottleOutput(outputArray, adcArray);
+            setThrottleOutput(&throttleOutput, adcArray);
         }
 
         //Output to motors
-        motorOutput(outputArray);
+        motorOutput(&throttleOutput);
 
         //Misc output functions (brake light)
         if(adcArray[2] > BRAKE_APPLIED_CUTOFF)
@@ -208,14 +198,14 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 
         //Input from CAN and output to OBD2
         //Converts data to percentages
-        uint8_t throttlePercent = outputArray[0];
+        uint8_t throttlePercent = (((adcArray[0] + adcArray[1])/2) * 100);
         uint8_t brakePercent = adcArray[2]/4096;
         uint8_t steeringPercent = adcArray[3]/4096;
 
         uint8_t canData[94];
         //Populate canData buffer with all data from CANBus and throttle,brake,and steering % values
         getAllCANData(canData);
-        canData[0] = (((adcArray[0] + adcArray[1])/2) * 100);
+        canData[0] = throttlePercent;
         canData[1] = brakePercent;
         canData[2] = steeringPercent;
 

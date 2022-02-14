@@ -156,9 +156,10 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
     {
         bseFlag = 0;
         return 0;
+    } else if (bseFlag) {
+        return 1;
     }
-    //NEED A DEFAULT RETURN SIGNAL
-    return;
+    return 0;
 }
 
 //fault
@@ -218,16 +219,12 @@ void startup()
     //This happens on the RTI interrupt
 }
 
-//TVA
-//Output array format
-//  [0]-ThrottleL  [1]-ThrottleR
-//  [2]-RegenL     [3]-RegenR
-void setThrottleOutput(unsigned int *outputArray, unsigned int *adcArray)
+void setThrottleOutput(unsigned int *throttleOutput, unsigned int *adcArray)
 {
     //Unpack and process input array
     float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
-    //Populate output array
-    outputArray[0] = TReq;    //Throttle
+    //Set throttle output
+    *throttleOutput = TReq;    //Throttle
 }
 
 void getAllCANData(uint8_t *canData){
