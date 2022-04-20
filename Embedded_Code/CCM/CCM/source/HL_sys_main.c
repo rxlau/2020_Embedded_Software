@@ -113,10 +113,7 @@
 
 //PWM Channels
 //====================================
-#define ThrottleL pwm0
-#define ThrottleR pwm1
-#define RegenL pwm2
-#define RegenR pwm3
+#define Throttle pwm0
 #define Fans pwm4
 //====================================
 
@@ -129,10 +126,10 @@ int APPSFault(int);
 int brakeCheck();
 int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake);
 void fault(int caller);
-void motorOutput(unsigned int *outputArray);
+void motorOutput(unsigned int output);
 void pwmSetup();
 void startup();
-void TVA(unsigned int *outputArray, unsigned int *adcArray);
+int getThrottleOutput(unsigned int *adcArray);
 void ThrottleDecode(unsigned int *outputArray, unsigned int *adcArray);
 void getAllCANData(uint8_t *canData);
 void sendAllDataOBD(uint8_t *canData);
@@ -253,13 +250,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     if(notification == rtiNOTIFICATION_COMPARE0) //Torque Function
     {
         unsigned int adcArray[4];
-        unsigned int outputArray[4];
-        unsigned int temp1;
-        //Output array format
-        //  [0]-ThrottleL  [1]-ThrottleR
-        //  [2]-RegenL     [3]-RegenR
-
-
+        unsigned int output;
 
         //Get ADC Data
         adcConversion(adcArray);
@@ -276,24 +267,19 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         if(APPSFault(adcDiff) || BSEFault(adcArray[0],adcArray[1],adcArray[2]))
         {
             //Set motor output = 0
-            outputArray[0] = 0;
-            outputArray[1] = 0;
-
-            //Should we also zero Regen?
-            outputArray[2] = 0;
-            outputArray[3] = 0;
+            output = 0;
             //Do we want to set throttle/output values in an array and then output once?
         }
         else
         {
 
             //Run Torque or Regen Vectoring Algorithm
-            TVA(outputArray, adcArray);
+            output = getThrottleOutput(adcArray);
 
         }
 
         //Output to motors
-        motorOutput(outputArray);
+        motorOutput(output);
 
 
         //Misc output functions (brake light)
@@ -309,10 +295,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
 
         //Input from CAN and output to OBD2
         //Converts data to percentages
-        uint8_t throttleLPercent = outputArray[0];
-        uint8_t throttleRPercent = outputArray[1];
-        uint8_t regenLPercent = outputArray[2];
-        uint8_t regenRPercent = outputArray[3];
+        uint8_t throttlePercent = output;
         uint8_t brakePercent = (float)((adcArray[2]/4096) * 100);
         uint8_t steeringPercent = (float)((adcArray[3]/4096) * 100);
 
@@ -453,10 +436,7 @@ void fault(int caller)
     }
 
     //Zero Throttle and Regen Requests
-    pwmSetDuty(hetRAM1,ThrottleL,0);
-    pwmSetDuty(hetRAM1,ThrottleR,0);
-    pwmSetDuty(hetRAM1,RegenL,0);
-    pwmSetDuty(hetRAM1,RegenR,0);
+    pwmSetDuty(hetRAM1,Throttle,0);
 
     //Set nonessential outputs based caller (DASH LEDs)
     if(caller == 0)
@@ -695,13 +675,7 @@ int BSEFault(unsigned int accel1, unsigned int accel2, unsigned int brake)
 //Only exists for the sake of making code look cleaner
 void pwmSetup()
 {
-    pwmSetDuty(hetRAM1, ThrottleL, 0);
-
-    pwmSetDuty(hetRAM1, ThrottleR, 0);
-
-    pwmSetDuty(hetRAM1, RegenL, 0);
-
-    pwmSetDuty(hetRAM1, RegenR, 0);
+    pwmSetDuty(hetRAM1, Throttle, 0);
 
     pwmSetDuty(hetRAM1, Fans, 0);
 }
@@ -710,67 +684,24 @@ void pwmSetup()
 
 //Motor Output
 //Handles setting PWM values for motor output
-void motorOutput(unsigned int *outputArray)
+void motorOutput(unsigned int output)
 {
-    pwmSetDuty(hetRAM1, ThrottleL, outputArray[0]);
-    pwmSetDuty(hetRAM1, ThrottleR, outputArray[1]);
+    pwmSetDuty(hetRAM1, Throttle, output);
 
-    //pwmSetDuty(hetRAM1, ThrottleL, 75);
+    //pwmSetDuty(hetRAM1, Throttle, 75);
     //pwmSetDuty(hetRAM1, ThrottleR, 25);
 
 
     //pwmSetDuty(hetRAM1, RegenL, outputArray[2]);
     //pwmSetDuty(hetRAM1, RegenR, outputArray[3]);
 }
-//TVA
-//Output array format
-//  [0]-ThrottleL  [1]-ThrottleR
-//  [2]-RegenL     [3]-RegenR
-void TVA(unsigned int *outputArray, unsigned int *adcArray)
+
+int getThrottleOutput(unsigned int *adcArray)
 {
     //Unpack and process input array
-    unsigned int Angle = adcArray[3];
-    float TReq;    //Average two throttle inputs
-    float lFactor, rFactor, m;
-
-    //Do some math
-    m = (0.6/DEADZONE_LOW);     //Factor used in TVA
-    TReq = (adcArray[0] + adcArray[1]) / 2;
-    TReq = ((float)TReq/4096) * 100;   //Throttle request as a percentage, represented 0-100
-
-    //Run the Torque Vectoring Algorithm
-    if(Angle <= DEADZONE_HIGH && Angle >= DEADZONE_LOW) //If Angle is within the deadzone
-    {
-        lFactor = 1;
-        rFactor = 1;
-    }
-    else if(Angle < DEADZONE_LOW || Angle > DEADZONE_HIGH)//If Angle is outside of deadzone
-    {
-        if(Angle < DEADZONE_LOW)    //Turning Left
-        {
-            lFactor = (m * Angle) + 0.4;
-        }
-        else
-        {
-            lFactor = 1;
-        }
-
-        if(Angle > DEADZONE_HIGH)   //Turning Right
-        {
-            rFactor = ((-m) * Angle) + (0.4 - (4096 * -m));
-        }
-        else
-        {
-            rFactor = 1;
-        }
-
-    }
-    //Populate output array
-    outputArray[0] = (float)TReq * lFactor;    //ThrottleL
-    outputArray[1] = (float)TReq * rFactor;    //ThrottleR
-    outputArray[2] = 0;
-    outputArray[3] = 0;
-
+    float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    //Set throttle output
+    return TReq;
 }
 
 
