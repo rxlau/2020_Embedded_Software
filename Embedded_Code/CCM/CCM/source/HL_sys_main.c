@@ -60,6 +60,7 @@
 #include "HL_sys_core.h"
 #include "stdlib.h"
 #include "stdio.h"
+#include "motor.h"
 
 /* USER CODE END */
 
@@ -75,14 +76,14 @@
 
 //Parameters
 //====================================
-#define PWM_PERIOD 100
+#define PWM_PERIOD              100
 #define BATTERY_TEMP_FAN_TURNON 0xFFF
 
 //ADC dependent params
-#define BRAKE_APPLIED_CUTOFF 1000    //Should we have a high and low parameter and calculate these values based off of that?
-#define BSE_CLEAR_CUTOFF 400
-#define DEADZONE_LOW 1536
-#define DEADZONE_HIGH 2560
+#define BRAKE_APPLIED_CUTOFF    1000    //Should we have a high and low parameter and calculate these values based off of that?
+#define BSE_CLEAR_CUTOFF        400
+#define DEADZONE_LOW            1536
+#define DEADZONE_HIGH           2560
 //====================================
 
 //Pin enumerations
@@ -162,6 +163,7 @@ int main(void)
         //Don't need this, this is only for simultaneous interrupts
 
     //Setup RTI
+    //Why not just disable these notifications until we enter Ready-to-Drive mode?
     rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE0);   //Enable ADC/Torque Interrupt
     rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE1);   //Enable Battery Management Interrupt
     rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE2);   //Enable utility/time delay notification
@@ -302,7 +304,7 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
         uint8_t canData[94];
         //Populate canData buffer with all data from CANBus and throttle,brake,and steering % values
         getAllCANData(canData);
-        canData[0] = (((adcArray [0] + adcArray[1])/2) * 100);
+        canData[0] = throttlePercent;
         canData[1] = brakePercent;
         canData[2] = steeringPercent;
 
@@ -699,7 +701,8 @@ void motorOutput(unsigned int output)
 int getThrottleOutput(unsigned int *adcArray)
 {
     //Unpack and process input array
-    float TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    int TReq = (adcArray[0] + adcArray[1]) / 2;    //Average two throttle inputs
+    TReq = ((float)TReq/4096) * 100;
     //Set throttle output
     return TReq;
 }
@@ -772,6 +775,11 @@ uint32_t checkPackets(uint8_t *src_packet,uint8_t *dst_packet,uint32_t psize){
         }
     }
     return(err);
+}
+
+void adcNotification(adcBASE_t *adc, uint32 group)
+{
+    return;
 }
 
 //All functions below need to be declared for CAN to function, but

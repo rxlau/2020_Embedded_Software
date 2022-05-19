@@ -101,8 +101,8 @@ void adcInit(void)
      *     - Setup hardware trigger edge
      *     - Setup hardware trigger source
      */
-    adcREG1->EVSRC = (uint32)0x00000000U
-                   | (uint32)ADC1_EVENT;
+    adcREG1->EVSRC = (uint32)0x00000008U
+                   | (uint32)ADC1_RTI_COMP0;
 
     /** - Setup event group sample window */
     adcREG1->EVSAMP = 1U;
@@ -129,7 +129,7 @@ void adcInit(void)
      *     - Setup hardware trigger source
      */
     adcREG1->G1SRC = (uint32)0x00000000U
-                   | (uint32)ADC1_EVENT;
+                   | (uint32)ADC1_EVENT; /* Alternate Trigger Source */
 
     /** - Setup group 1 sample window */
     adcREG1->G1SAMP = 1U;
@@ -156,7 +156,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG1->G2SRC = (uint32)0x00000000U
-                   | (uint32)ADC1_EVENT;
+                   | (uint32)ADC1_EVENT; /* Alternate Trigger Source */
 
     /** - Setup group 2 sample window */
     adcREG1->G2SAMP = 1U;
@@ -227,7 +227,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG2->EVSRC = (uint32)0x00000000U
-                   | (uint32)ADC2_EVENT;
+                   | (uint32)ADC2_EVENT; /* Alternate Trigger Source */
 
     /** - Setup event group sample window */
     adcREG2->EVSAMP = 1U;
@@ -254,7 +254,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG2->G1SRC = (uint32)0x00000000U
-                   | (uint32)ADC2_EVENT;
+                   | (uint32)ADC2_EVENT; /* Alternate Trigger Source */
 
 
     /** - Setup group 1 sample window */
@@ -282,7 +282,7 @@ void adcInit(void)
     *     - Setup hardware trigger source
 	*/
     adcREG2->G2SRC = (uint32)0x00000000U
-                   | (uint32)ADC2_EVENT;
+                   | (uint32)ADC2_EVENT;  /* Alternate Trigger Source */
 
     /** - Setup group 2 sample window */
     adcREG2->G2SAMP = 1U;
@@ -344,38 +344,6 @@ static const uint32 s_adcSelect[2U][3U] =
     0x00000000U |
     0x00000000U |
     0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U,
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
-    0x00000000U |
     0x00000100U |
     0x00000000U |
     0x00000000U |
@@ -392,6 +360,38 @@ static const uint32 s_adcSelect[2U][3U] =
     0x00000000U |
     0x00000000U |
     0x00800000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U,
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
+    0x00000000U |
     0x00000000U |
     0x00000000U |
     0x00000000U |
@@ -512,7 +512,7 @@ static const uint32 s_adcSelect[2U][3U] =
 /** - s_adcFiFoSize is used as constant table for channel selection */
 static const uint32 s_adcFiFoSize[2U][3U] =
 {
-    {16U,
+    {4U,
     4U,
     16U},
     {16U,
@@ -1223,6 +1223,27 @@ void adc2GetConfigValue(adc_config_reg_t *config_reg, config_value_type_t type)
 /* USER CODE BEGIN (35) */
 /* USER CODE END */
 
+/** @fn void adc1Group0Interrupt(void)
+*   @brief ADC1 Event Group Interrupt Handler
+*/
+#pragma CODE_STATE(adc1Group0Interrupt, 32)
+#pragma INTERRUPT(adc1Group0Interrupt, IRQ)
+
+/* SourceId : ADC_SourceId_016 */
+/* DesignId : ADC_DesignId_013 */
+/* Requirements : HL_CONQ_ADC_SR16 */
+void adc1Group0Interrupt(void)
+{
+/* USER CODE BEGIN (36) */
+/* USER CODE END */
+    
+    adcREG1->GxINTFLG[0U] = 9U;
+
+    adcNotification(adcREG1, adcGROUP0);
+
+/* USER CODE BEGIN (37) */
+/* USER CODE END */
+}
 
 
 
